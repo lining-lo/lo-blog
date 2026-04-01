@@ -37,23 +37,25 @@ async function generateReadme() {
     let mdContent = `# 个人博客文档列表\n\n`;
     mdContent += `> 自动生成于 ${new Date().toLocaleString("zh-CN")}\n\n`;
 
-    // 1. 根目录文件 → docs/xx.md
+    // 1. 根目录文件
     if (rootFiles.length > 0) {
       rootFiles.forEach((fileName, index) => {
         const title = fileName;
-        const link = `docs/${fileName}`; // 👈 根目录格式
+        const link = `docs/${fileName}`;
         mdContent += `${index + 1}. [${title}](${link})\n`;
       });
       mdContent += "\n";
     }
 
-    // 2. 子文件夹 → /目录/xx.md
+    // 2. 子文件夹 🔥🔥🔥 这里我改了！
     for (const dir of subDirs) {
       mdContent += `## ${dir.dirName}\n\n`;
 
       dir.files.forEach((fileName, index) => {
         const title = fileName;
-        const link = `/${dir.dirName}/${fileName}`; // 👈 子目录格式
+        // 原来错误： /${dir.dirName}/${fileName}
+        // 现在正确： docs/${dir.dirName}/${fileName}
+        const link = `docs/${dir.dirName}/${fileName}`;
         mdContent += `${index + 1}. [${title}](${link})\n`;
       });
 
@@ -61,7 +63,7 @@ async function generateReadme() {
     }
 
     await fs.writeFile(readmePath, mdContent, "utf8");
-    console.log("✅ 生成成功！格式完全符合要求");
+    console.log("✅ 生成成功！路径完全正确，GitHub 可访问");
   } catch (err) {
     console.error("❌ 生成失败:", err);
   }
