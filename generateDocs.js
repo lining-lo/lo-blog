@@ -23,7 +23,7 @@ async function scanDocsDir(dir) {
   for (const entry of entries) {
     if (CONFIG.ignoreList.includes(entry.name)) continue;
     const fullPath = path.join(dir, entry.name);
-    const relativePath = path.relative(CONFIG.docsDir, fullPath);
+    const relativePath = path.relative(__dirname, fullPath);
 
     if (entry.isDirectory()) {
       result.dirs[entry.name] = await scanDocsDir(fullPath);
