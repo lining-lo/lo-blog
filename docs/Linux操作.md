@@ -639,8 +639,8 @@ lining1:x:1001:
   a.[r]代表可读:可以读取,可以使用ls等查看命令查看目录下的内容
   b.[w]代表可写:可以修改,比如目录内创建,删除,重命名目录操作
   c.[x]代表可执行:可以使用cd命令进入该目录
-yutao@yutao:~$ ll
--rw-r--r--  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
+lining@lining:~$ ll
+-rw-r--r--  1 lining lining  826  5月  6 22:38 清明雨上.txt
 ```
 
 ![image-20260509230525613](../image/image-20260509230525613.png)
@@ -665,18 +665,18 @@ r--      → 其他人可读，不可写、不可执行
 | chmod u\|g\|o +\|-\|= r\|w\|x 指定目录或者文件 | 给指定目录或者文件的不同用户权限添加或者减去对应的权限 |
 
 ```sh
-yutao@yutao:~$ sudo chmod g+w 清明雨上.txt 
-[sudo] yutao 的密码： 输入你的密码
-yutao@yutao:~$ ll
--rw-rw-r--  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
+lining@lining:~$ sudo chmod g+w 清明雨上.txt 
+[sudo] lining 的密码： 输入你的密码
+lining@lining:~$ ll
+-rw-rw-r--  1 lining lining  826  5月  6 22:38 清明雨上.txt
 ===================================================================
-yutao@yutao:~$ sudo chmod g-w 清明雨上.txt 
-yutao@yutao:~$ ll
--rw-r--r--  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
+lining@lining:~$ sudo chmod g-w 清明雨上.txt 
+lining@lining:~$ ll
+-rw-r--r--  1 lining lining  826  5月  6 22:38 清明雨上.txt
 ===================================================================
-yutao@yutao:~$ sudo chmod g+w,o+w 清明雨上.txt 
-yutao@yutao:~$ ll
--rw-rw-rw-  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
+lining@lining:~$ sudo chmod g+w,o+w 清明雨上.txt 
+lining@lining:~$ ll
+-rw-rw-rw-  1 lining lining  826  5月  6 22:38 清明雨上.txt
 ```
 
 ### 6.4.chown命令_改变所有者和所属组
@@ -687,18 +687,18 @@ yutao@yutao:~$ ll
 | chown 用户名:组名 目录名/文件名 | 将指定的目录或者文件改变指定的所有者和所属组 |
 
 ```sh
-yutao@yutao:~$ sudo chown root 清明雨上.txt 
-yutao@yutao:~$ ll
+lining@lining:~$ sudo chown root 清明雨上.txt 
+lining@lining:~$ ll
 =============================================================
--rw-rw-rw-  1 root  yutao  826  5月  6 22:38 清明雨上.txt
+-rw-rw-rw-  1 root  lining  826  5月  6 22:38 清明雨上.txt
 =============================================================
-yutao@yutao:~$ sudo chown root:root 清明雨上.txt 
-yutao@yutao:~$ ll
+lining@lining:~$ sudo chown root:root 清明雨上.txt 
+lining@lining:~$ ll
 -rw-rw-rw-  1 root  root   826  5月  6 22:38 清明雨上.txt
 =============================================================
-yutao@yutao:~$ sudo chown yutao:yutao 清明雨上.txt 
-yutao@yutao:~$ ll
--rw-rw-rw-  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
+lining@lining:~$ sudo chown lining:lining 清明雨上.txt 
+lining@lining:~$ ll
+-rw-rw-rw-  1 lining lining  826  5月  6 22:38 清明雨上.txt
 ```
 
 > 如果想将目录下所有的内容权限都改了, 就在chown后面加一个-R:
@@ -707,3 +707,390 @@ yutao@yutao:~$ ll
 > sudo chown -R root:root test/
 > ll -R test/
 > ```
+
+## 7.查找类相关命令
+
+### 7.1.find命令_查找文件或者目录
+
+```
+1.作用:find命令将从指定目录向下递归遍历所有的子目录,将满足条件的文件显示在控制台上
+```
+
+| 命令                   | 说明                         |
+| ---------------------- | ---------------------------- |
+| find 搜索范围 搜索选项 | 在指定的范围下搜索指定的内容 |
+
+```sh
+1.按照文件名搜索:
+  find 搜索范围 -name 指定文件
+2.按照拥有者搜索:
+  find 搜索范围 -user 指定文件
+3.按照文件大小搜索:
+  find 搜索范围 -size "+大小"
+  比如:find ./ -size "+200c"   -> 查询当前目录下大于200字节的文件
+```
+
+> 按照文件大小搜索:+n 大于 -n小于 n等于
+>
+> 按照文件大小搜索的大小单位:
+>
+> b —— 块（512字节）
+>
+> c —— 字节
+>
+> w —— 字（2字节）
+>
+> k —— 千字节
+>
+> M —— 兆字节
+>
+> G —— 吉字节
+
+```sh
+lining@lining:~$ find ./ -name "*.txt"
+./清明雨上.txt
+
+=========================================================
+
+lining@lining:~$ find ./ -user lining
+
+=========================================================
+
+lining@lining:~$ find ./ -size "+1000c"
+```
+
+### 7.2.grep命令_grep和|管道符的过滤查找
+
+```sh
+管道符: | 这个代表将前一个命令的处理输出结果 传递给后面的命令处理
+grep : Linux 里用来“按关键字筛选文本”的命令
+lining@lining:~$ ll
+总计 88
+drwxr-x--- 15 lining lining 4096  5月  6 22:38 ./
+drwxr-xr-x  3 root  root  4096  5月  7 23:00 ../
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 公共的/
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 模板/
+-rw-rw-rw-  1 lining lining  826  5月  6 22:38 清明雨上.txt
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 视频/
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 图片/
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 文档/
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 下载/
+drwxr-xr-x  2 lining lining 4096  4月 24 21:20 音乐/
+drwxr-xr-x  2 lining lining 4096  4月 26 20:53 桌面/
+-rw-------  1 lining lining 4831  5月 11 09:49 .bash_history
+-rw-r--r--  1 lining lining  220  4月 24 21:15 .bash_logout
+-rw-r--r--  1 lining lining 3771  4月 24 21:15 .bashrc
+drwx------ 11 lining lining 4096  4月 25 20:48 .cache/
+drwx------ 11 lining lining 4096  4月 24 22:05 .config/
+drwxrwxr-x  2 lining lining 4096  4月 29 22:24 haha/
+drwx------  3 lining lining 4096  4月 24 21:20 .local/
+-rw-r--r--  1 lining lining  807  4月 24 21:15 .profile
+drwx------  4 lining lining 4096  4月 24 21:24 snap/
+-rw-r--r--  1 lining lining    0  4月 24 21:32 .sudo_as_admin_successful
+-rw-------  1 lining lining 2307  5月  6 22:38 .viminfo
+
+===========================================================================
+
+lining@lining:~$ ll | grep .b
+-rw-------  1 lining lining 4831  5月 11 09:49 .bash_history
+-rw-r--r--  1 lining lining  220  4月 24 21:15 .bash_logout
+-rw-r--r--  1 lining lining 3771  4月 24 21:15 .bashrc
+```
+
+> `grep` 是 Linux 里用来“按关键字筛选文本”的命令
+
+## 8.压缩和解压类命令
+
+```
+在linux中压缩包都是xxx.tar.gz
+```
+
+| 命令                                         | 说明                                           |
+| -------------------------------------------- | ---------------------------------------------- |
+| tar -c 压缩文件名                            | 产生.tar打包文件 (创建一个包,但是不压缩)       |
+| tar -v 压缩文件名                            | 显示详细信息                                   |
+| tar -f 压缩文件名                            | 指定压缩后的文件名                             |
+| tar -z 压缩文件名                            | 压缩(只压缩,不打包)                            |
+| tar -x 压缩文件名                            | 解压                                           |
+| **tar -zcvf test.tar.gz 文件名或者文件夹名** | 常用压缩方式                                   |
+| **tar -zxvf test.tar.gz**                    | 常用解压方式                                   |
+| **tar -zxvf test.tar.gz -C 目录路径**        | 常用解压方式 -> 将压缩包中内容解压到指定目录中 |
+
+> 注意:我们打包仅仅是将多个文件或者文件夹放到一起了,而没有压缩变小,所以需要-z打包并压缩
+
+```sh
+lining@ubuntu260528:~$ tar -zcvf test.tar.gz 1.txt 2.txt  #将1.txt和2.txt压缩到test.tar.gz中
+1.txt
+2.txt
+lining@ubuntu260528:~$ ll
+-rw-r--r--  1 lining lining   54  6月 15 14:39 1.txt
+-rw-rw-r--  1 lining lining    0  6月 15 21:20 2.txt
+-rw-rw-r--  1 lining lining  170  6月 15 21:20 test.tar.gz
+
+================================================================
+lining@ubuntu260528:~$ rm -rf 1.txt  #删除1.txt文件
+lining@ubuntu260528:~$ rm -rf 2.txt  #删除2.txt文件
+lining@ubuntu260528:~$ ll
+总计 96
+-rw-rw-r--  1 lining lining  170  6月 15 21:20 test.tar.gz
+===============================================================
+
+lining@ubuntu260528:~$ tar -zxvf test.tar.gz -C ./  #将test.tar.gz解压到当前目录下
+1.txt
+2.txt
+lining@ubuntu260528:~$ ll
+
+-rw-r--r--  1 lining lining   54  6月 15 14:39 1.txt
+-rw-rw-r--  1 lining lining    0  6月 15 21:20 2.txt
+-rw-rw-r--  1 lining lining  170  6月 15 21:20 test.tar.gz
+```
+
+## 9.网络类命令
+
+| 命令              | 说明                     |
+| ----------------- | ------------------------ |
+| ifconfig          | 查看当前网络IP           |
+| ping 域名\|IP地址 | 查看和其他的网络是否能通 |
+
+```sh
+yutao@yutao:~$ ifconfig
+ens33: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.100.100  netmask 255.255.255.0  broadcast 192.168.100.255
+        inet6 fe80::bbdc:5daa:9dfe:6929  prefixlen 64  scopeid 0x20<link>
+        ether 00:0c:29:ec:63:05  txqueuelen 1000  (以太网)
+        RX packets 12091  bytes 13225571 (13.2 MB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 4606  bytes 572366 (572.3 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (本地环回)
+        RX packets 149  bytes 13094 (13.0 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 149  bytes 13094 (13.0 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+        
+===========================================================================        
+
+yutao@yutao:~$ ping 127.0.0.1   #也可以用localhost
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.019 ms
+64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.026 ms
+64 bytes from 127.0.0.1: icmp_seq=3 ttl=64 time=0.024 ms
+64 bytes from 127.0.0.1: icmp_seq=4 ttl=64 time=0.055 ms
+```
+
+> 如果linux可视化工具连接不上,我们可以测试虚拟机和主机是否能ping通:
+>
+> a.在linux中:ping 主机IP
+>
+> b.在主机dos命令窗口中:ping虚拟机
+
+## 10.进程线程类命令
+
+### 10.1.ps命令_查看当前系统进程状态
+
+| 命令                   | 说明         |
+| ---------------------- | ------------ |
+| ps -aux                | 查看所有进程 |
+| ps -aux \| grep 进程名 | 查看指定进程 |
+
+![image-20260518142720519](../image/image-20260518142720519.png)
+
+```
+1.USER：该进程是由哪个用户产生的
+2.PID：进程的ID号
+3.%CPU：该进程占用CPU资源的百分比，占用越高，进程越耗费资源；
+4.%MEM：该进程占用物理内存的百分比，占用越高，进程越耗费资源；
+5.VSZ：该进程占用虚拟内存的大小，单位KB；
+6.RSS：该进程占用实际物理内存的大小，单位KB；
+7.TTY：该进程是在哪个终端中运行的。其中tty1-tty6代表系统的虚拟控制台。pts/0-255代表伪终端,通常用于 SSH 会话、telnet 会        话以及其他远程登录会话。
+8.STAT：进程状态。常见的状态有：R：运行、S：睡眠、T：停止状态、s：包含子进程、+：位于后台、I<：几乎没有使用CPU时间
+9.START：该进程的启动时间
+10.TIME：该进程占用CPU的运算时间，注意不是系统时间
+11.COMMAND：产生此进程的命令名
+lining@ubuntu260528:~$ ps -aux   #查看所有进程
+
+lining@ubuntu260528:~$ ps -aux | grep net-tools   #查看指定进程
+```
+
+| 命令                  | 说明                         |
+| --------------------- | ---------------------------- |
+| ps -ef                | 查看子父进程之间的关系       |
+| ps -ef \| grep 进程名 | 查看执行进程的子父类进程关系 |
+
+![image-20260518143122557](../image/image-20260518143122557.png)
+
+```
+1.UID：用户名
+2.PID：进程ID 
+3.PPID：父进程ID 
+4.C：CPU用于计算执行优先级的因子。数值越大，表明进程是CPU密集型运算，执行优先级会降低；数值越小，表明进程是I/O密集型运算，执      行优先级会提高 
+5.STIME：进程启动的时间 
+6.TTY：该进程是在哪个终端中运行的。 
+7.TIME：CPU时间 
+8.CMD：启动进程所用的命令和参数
+lining@ubuntu260528:~$ ps -ef
+
+lining@ubuntu260528:~$ ps -ef | grep ssh
+```
+
+> 经验说明:
+>
+> 1.如果想查看进程的CPU占用率和内存占用率,用 ps -aux
+>
+> 2.如果想查看进程的父进程ID,用 ps -ef
+
+### 10.2.kill命令_终止进程
+
+| 命令             | 说明                                                    |
+| ---------------- | ------------------------------------------------------- |
+| kill -9 进程号   | 通过进程号强制杀死进程 -> 也可以kill 进程号             |
+| killall 进程名字 | 通过进程名杀死进程,这在系统因负载过大而变的很慢时很有用 |
+
+```
+窗口1: 实时盯着清明雨上.txt，文件一有新内容就立刻显示在屏幕上
+===================================
+yutao@yutao:~$ tail -F 清明雨上.txt
+窗口2:查看进程,杀死进程  
+===================================
+yutao@yutao:~$ ps -ef | grep tail   -> 查找系统里所有正在运行的 tail 进程
+yutao       3319    3310  0 14:49 pts/1    00:00:00 tail -F 清明雨上.txt
+yutao       3321    2542  0 14:49 pts/0    00:00:00 grep --color=auto tail
+yutao@yutao:~$ kill -9 3319
+```
+
+> 再回头看窗口1,显示"已终止"的字样
+
+### 10.3.netstat命令_显示网络统计信息和端口号占用情况
+
+```
+我们开发好的应用程序都是有端口号的,当我们的应用程序部署到服务器上跑起来之后,我们要是访问进行通信,就需要网络通信三要素:IP,端口号,协议
+
+我们如何查看端口号呢?需要用到netstat命令
+```
+
+| 命令           | 说明                                                         |
+| -------------- | ------------------------------------------------------------ |
+| netstat -tunlp | 查看端口号:t代表tcp协议,u代表udp协议 -> 显示 TCP/UDP 的连接和监听端口，并显示对应的进程名和 PID(PID是进程编号) |
+
+```
+yutao@yutao:~$ netstat -tunlp
+（并非所有进程都能被检测到，所有非本用户的进程信息将不会显示，如果想看到所有信息，则必须切换到 root 用户）
+激活Internet连接 (仅服务器)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 ::1:631                 :::*                    LISTEN      -                   
+tcp6       0      0 :::22                   :::*                    LISTEN      -                   
+udp        0      0 127.0.0.53:53           0.0.0.0:*                           -                   
+udp        0      0 0.0.0.0:5353            0.0.0.0:*                           -                   
+udp        0      0 0.0.0.0:46677           0.0.0.0:*                           -                   
+udp6       0      0 :::5353                 :::*                                -                   
+udp6       0      0 :::38836                :::*                                -                 
+```
+
+> ```
+> 通信三要素:
+>   1.IP地址:计算机的唯一标识,用于连接计算机的
+>   2.端口号:应用程序的唯一标识,用于连接应用
+>   3.协议:双方共同遵守的一种网络传输规则,需要双方都遵守同一套协议,才能进行数据传输
+>     a.UDP:面向无连接协议  -> 通信的时候不需要对方确认连接就能发数据
+>           好:效率高
+>           坏:数据传输不安全,很容易丢失数据包
+>     b.TCP:面向连接协议  -> 双方通信之前需要反复确认连接,才能进行数据传输
+>           连接:三次握手
+>           断开:四次挥手
+>               
+>           好:安全
+>           坏:效率低
+>               
+> IP地址:后面的就是端口号  
+>     比如发一个请求:   主机ip:服务器端口号/应用名称/资源?请求参数
+>                     localhost:8080/bookstore/资源?username=tom&password=123
+> ```
+
+## 11.crontab命令_系统定时任务
+
+```
+1.crontab 是用来设置和管理定时任务的命令
+2.cron 是 Linux 里的定时任务服务，用来按设定时间自动执行命令或脚本
+```
+
+### 11.1.crontab服务管理
+
+```
+yutao@yutao:~$ sudo systemctl status cron  # 查看cron服务状态,包括cron 定时任务服务是否在运行、是否开机自启、最近有没有报错
+yutao@yutao:~$ sudo systemctl restart cron # 重启cron服务
+```
+
+### 11.2.crontab设置定时任务
+
+| 命令           | 说明                              |
+| -------------- | --------------------------------- |
+| crontab -l     | 查询crontab定时任务               |
+| **crontab -e** | 编辑crontab定时任务               |
+| crontab -r     | 删除当前用户所有的crontab定时任务 |
+
+```
+进入crontab编辑界面。会打开vim编辑你的工作。首次使用该命令时，系统会提示你选择一个文本编辑器，选择你熟悉的编辑器即可
+```
+
+**执行任务中*的含义**
+
+| 项目      | 含义                 | 范围                    |
+| --------- | -------------------- | ----------------------- |
+| 第一个“*” | 一小时当中的第几分钟 | 0-59                    |
+| 第二个“*” | 一天当中的第几小时   | 0-23                    |
+| 第三个“*” | 一个月当中的第几天   | 1-31                    |
+| 第四个“*” | 一年当中的第几月     | 1-12                    |
+| 第五个“*” | 一周当中的星期几     | 0-7（0和7都代表星期日） |
+
+| 特殊符号 | 含义                                                         |
+| -------- | ------------------------------------------------------------ |
+| *        | 代表任何时间。比如第一个“*”就代表一小时中每分钟都执行一次的意思。 |
+| ，       | 代表不连续的时间。比如“0 8,12,16 * * * 命令”，就代表在每天的8点0分，12点0分，16点0分都执行一次命令 |
+| -        | 代表连续的时间范围。比如“0 5 * * 1-6命令”，代表在周一到周六的凌晨5点0分执行命令 |
+| */n      | 代表每隔多久执行一次。比如“*/10 * * * * 命令”，代表每隔10分钟就执行一遍命令 |
+
+| 特定时间          | 含义                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| 45 22 * * * 命令  | 在22点45分执行命令                                           |
+| 0 17 * * 1 命令   | 每周1 的17点0分执行命令                                      |
+| 0 5 1,15 * * 命令 | 每月1号和15号的凌晨5点0分执行命令                            |
+| 40 4 * * 1-5 命令 | 每周一到周五的凌晨4点40分执行命令                            |
+| */10 4 * * * 命令 | 每天的凌晨4点，每隔10分钟执行一次命令                        |
+| 0 0 1,15 * 1 命令 | 每月1号和15号，每周1的0点0分都会执行命令。注意：星期几和几号最好不要同时出现，因为他们定义的都是天。非常容易让管理员混乱。 |
+
+### 11.3.crontab实际操作
+
+```sh
+窗口1:
+=================================
+yutao@yutao:~$ crontab -e
+
+Select an editor.  To change later, run 'select-editor'.
+  1. /bin/nano        <---- easiest
+  2. /usr/bin/vim.basic
+  3. /usr/bin/vim.tiny
+  4. /bin/ed
+
+Choose 1-4 [1]: 2  
+
+==================================
+
+插入:*/1 * * * * /bin/echo ”11” >> /home/yutao/清明雨上.txt
+
+退出保存
+
+==================================
+yutao@yutao:~$ crontab -l
+窗口2:
+=======================================
+yutao@yutao:~$ pwd
+/home/yutao
+yutao@yutao:~$ tail -f 清明雨上.txt
+```
