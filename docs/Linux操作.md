@@ -639,8 +639,8 @@ lining1:x:1001:
   a.[r]代表可读:可以读取,可以使用ls等查看命令查看目录下的内容
   b.[w]代表可写:可以修改,比如目录内创建,删除,重命名目录操作
   c.[x]代表可执行:可以使用cd命令进入该目录
-lining@lining:~$ ll
--rw-r--r--  1 lining lining  826  5月  6 22:38 清明雨上.txt
+yutao@yutao:~$ ll
+-rw-r--r--  1 yutao yutao  826  5月  6 22:38 清明雨上.txt
 ```
 
 ![image-20260509230525613](../image/image-20260509230525613.png)
@@ -853,7 +853,7 @@ lining@ubuntu260528:~$ ll
 | ping 域名\|IP地址 | 查看和其他的网络是否能通 |
 
 ```sh
-yutao@yutao:~$ ifconfig
+lining@lining:~$ ifconfig
 ens33: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet 192.168.100.100  netmask 255.255.255.0  broadcast 192.168.100.255
         inet6 fe80::bbdc:5daa:9dfe:6929  prefixlen 64  scopeid 0x20<link>
@@ -874,7 +874,7 @@ lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
         
 ===========================================================================        
 
-yutao@yutao:~$ ping 127.0.0.1   #也可以用localhost
+lining@lining:~$ ping 127.0.0.1   #也可以用localhost
 PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
 64 bytes from 127.0.0.1: icmp_seq=1 ttl=64 time=0.019 ms
 64 bytes from 127.0.0.1: icmp_seq=2 ttl=64 time=0.026 ms
@@ -899,7 +899,7 @@ PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
 
 ![image-20260518142720519](../image/image-20260518142720519.png)
 
-```
+```sh
 1.USER：该进程是由哪个用户产生的
 2.PID：进程的ID号
 3.%CPU：该进程占用CPU资源的百分比，占用越高，进程越耗费资源；
@@ -923,7 +923,7 @@ lining@ubuntu260528:~$ ps -aux | grep net-tools   #查看指定进程
 
 ![image-20260518143122557](../image/image-20260518143122557.png)
 
-```
+```sh
 1.UID：用户名
 2.PID：进程ID 
 3.PPID：父进程ID 
@@ -950,16 +950,16 @@ lining@ubuntu260528:~$ ps -ef | grep ssh
 | kill -9 进程号   | 通过进程号强制杀死进程 -> 也可以kill 进程号             |
 | killall 进程名字 | 通过进程名杀死进程,这在系统因负载过大而变的很慢时很有用 |
 
-```
+```sh
 窗口1: 实时盯着清明雨上.txt，文件一有新内容就立刻显示在屏幕上
 ===================================
-yutao@yutao:~$ tail -F 清明雨上.txt
+lining@lining:~$ tail -F 清明雨上.txt
 窗口2:查看进程,杀死进程  
 ===================================
-yutao@yutao:~$ ps -ef | grep tail   -> 查找系统里所有正在运行的 tail 进程
-yutao       3319    3310  0 14:49 pts/1    00:00:00 tail -F 清明雨上.txt
-yutao       3321    2542  0 14:49 pts/0    00:00:00 grep --color=auto tail
-yutao@yutao:~$ kill -9 3319
+lining@lining:~$ ps -ef | grep tail   -> 查找系统里所有正在运行的 tail 进程
+lining       3319    3310  0 14:49 pts/1    00:00:00 tail -F 清明雨上.txt
+lining       3321    2542  0 14:49 pts/0    00:00:00 grep --color=auto tail
+lining@lining:~$ kill -9 3319
 ```
 
 > 再回头看窗口1,显示"已终止"的字样
@@ -976,8 +976,8 @@ yutao@yutao:~$ kill -9 3319
 | -------------- | ------------------------------------------------------------ |
 | netstat -tunlp | 查看端口号:t代表tcp协议,u代表udp协议 -> 显示 TCP/UDP 的连接和监听端口，并显示对应的进程名和 PID(PID是进程编号) |
 
-```
-yutao@yutao:~$ netstat -tunlp
+```sh
+lining@lining:~$ netstat -tunlp
 （并非所有进程都能被检测到，所有非本用户的进程信息将不会显示，如果想看到所有信息，则必须切换到 root 用户）
 激活Internet连接 (仅服务器)
 Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
@@ -1022,9 +1022,9 @@ udp6       0      0 :::38836                :::*                                
 
 ### 11.1.crontab服务管理
 
-```
-yutao@yutao:~$ sudo systemctl status cron  # 查看cron服务状态,包括cron 定时任务服务是否在运行、是否开机自启、最近有没有报错
-yutao@yutao:~$ sudo systemctl restart cron # 重启cron服务
+```sh
+lining@lining:~$ sudo systemctl status cron  # 查看cron服务状态,包括cron 定时任务服务是否在运行、是否开机自启、最近有没有报错
+lining@lining:~$ sudo systemctl restart cron # 重启cron服务
 ```
 
 ### 11.2.crontab设置定时任务
@@ -1070,7 +1070,7 @@ yutao@yutao:~$ sudo systemctl restart cron # 重启cron服务
 ```sh
 窗口1:
 =================================
-yutao@yutao:~$ crontab -e
+lining@lining:~$ crontab -e
 
 Select an editor.  To change later, run 'select-editor'.
   1. /bin/nano        <---- easiest
@@ -1082,15 +1082,736 @@ Choose 1-4 [1]: 2
 
 ==================================
 
-插入:*/1 * * * * /bin/echo ”11” >> /home/yutao/清明雨上.txt
+插入:*/1 * * * * /bin/echo ”11” >> /home/lining/清明雨上.txt
 
 退出保存
 
 ==================================
-yutao@yutao:~$ crontab -l
+lining@lining:~$ crontab -l
 窗口2:
 =======================================
-yutao@yutao:~$ pwd
-/home/yutao
-yutao@yutao:~$ tail -f 清明雨上.txt
+lining@lining:~$ pwd
+/home/lining
+lining@lining:~$ tail -f 清明雨上.txt
+```
+
+# 四、shell脚本
+
+## 1.shell概述
+
+```sh
+1.概述:shell其实有两个作用
+  a.作用1:是一个命令行解释器,它接收应用程序或者用户命令,然后调用操作系统内核
+         就是当我们输入命令,这个shell会将这个翻译成操作系统能看懂的指令,让操作系统帮我们做事情
+      
+  b.作用2:shell是一个功能强大的脚本编程语言,易编写,易调试,灵活性强  
+      
+2.默认shell解释器:  /bin/bash   -> bash就是shell解释器
+    
+3.查看默认shell解释器命令:echo $SHELL
+  lining@lining:~$ echo $SHELL
+```
+
+## 2.shell脚本入门
+
+```sh
+1.创建一个文本文件
+  vim helloworld.sh
+    
+2.在文本文件的第一行指定解释器  -> 其实也不用指定,因为默认解释器就是bin/bash
+  #!/bin/bash
+    
+3.编写脚本代码
+  echo "helloworld"
+
+4.退出保存
+  esc
+  :wq
+      
+5.运行脚本:  用这种运行方式其实编辑的时候文本文档中的第一行就没用了,因为我们就是用的默认解释器
+  bash helloworld.sh
+```
+
+> 其他运行脚本方式:使用脚本的相对路径运行:直接写文件名: 这样写代码的时候第一行#!/bin/bash就生效了
+>
+> 1.修改helloworld.sh脚本权限:
+>
+>  chmod u+x [helloworld.sh](http://helloworld.sh/)
+>
+> 2.执行脚本:
+>
+>  ./helloworld.sh
+
+## 3.变量
+
+### 3.1.系统预定义变量
+
+```sh
+1.常用的系统变量:
+  PATH   HOME  PWD  SHELL  USER 等
+2.格式: $变量名   -> 不要有空格
+```
+
+#### 3.1.1.查看系统变量的值:echo $系统变量名(不用管)
+
+```sh
+lining@lining:~$ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+=============================================================================
+lining@lining:~$ echo $HOME
+/home/lining
+```
+
+#### 3.1.2.显示当前shell中所有变量: set(不用管)
+
+```sh
+lining@lining:~$ set
+```
+
+### 3.2.自定义变量
+
+```
+1.格式:
+  a.定义变量: 变量名=变量值    -> =前后不要有空格
+  b.撤销变量: unset 变量名
+  c.声明静态变量: readonly 变量名   -> 不能重新赋值,不能unset撤销
+      
+2.注意事项:
+  a.变量名称可以由字母、数字和下划线组成，但是不能以数字开头，环境变量名建议大写。
+  b.等号两侧不能有空格。
+  c.在bash中，变量默认类型都是字符串类型，无法直接进行数值运算。
+  d.变量的值如果有空格，需要使用双引号或单引号括起来。
+  e.最右侧分号可有可无，一般都不写
+  f.想使用变量中的值,需要在变量名前加$    
+```
+
+#### 3.2.1.定义变量A
+
+```sh
+lining@lining:~$ A=5
+lining@lining:~$ echo $A
+5
+```
+
+#### 3.2.2.给变量A重新赋值
+
+```sh
+lining@lining:~$ A=10
+lining@lining:~$ echo $A
+10
+```
+
+#### 3.2.3.撤销变量A
+
+```sh
+lining@lining:~$ unset A
+lining@lining:~$ echo $A
+```
+
+#### 3.2.4.声明静态（只读）的变量B=2，不能修改和unset
+
+```sh
+lining@lining:~$ readonly B=1
+lining@lining:~$ echo $B
+1
+lining@lining:~$ B=2
+-bash: B: 只读变量
+lining@lining:~$ unset B
+-bash: unset: B: 无法取消设定：只读variable
+```
+
+#### 3.2.5.在bash中，变量默认类型都是字符串类型，无法直接进行数值运算
+
+```sh
+lining@lining:~$ A=1+2
+lining@lining:~$ echo $A
+1+2
+```
+
+#### 3.2.6.变量的值如果有空格，需要使用双引号或单引号括起来
+
+```sh
+lining@lining:~$ A=hello world
+找不到命令 “world”，但可以通过以下软件包安装它：
+sudo snap install world
+lining@lining:~$ A="hello world"
+lining@lining:~$ echo $A
+hello world
+```
+
+#### 3.2.7.可把变量提升为全局环境变量，可供其他Shell程序使用
+
+```sh
+语法:export 变量名
+lining@lining:~/shellcode$ vim demo01helloworld.sh 
+#!/bin/bash
+
+echo "helloworld"
+echo $A
+
+==============================================
+esc -> :wq保存
+==============================================
+
+lining@lining:~/shellcode$ A=100
+lining@lining:~/shellcode$ bash demo01helloworld.sh 
+helloworld
+
+====================================================
+lining@lining:~/shellcode$ export A   #导入变量A,此时文件外面定义的A变成了全局变量,文件中的echo $A才能使用我们外面定义的A
+lining@lining:~/shellcode$ bash demo01helloworld.sh 
+helloworld
+100
+```
+
+> 注意：必须在同一个窗口中运行测试（必须得是在同一个进程中)
+
+### 3.3.特殊变量
+
+#### 3.3.1. $n
+
+```sh
+1.作用:用于接收命令行上的数据
+2.语法:n代表数字
+  a.$0:代表脚本名称 -> 文本文档的名称
+  b.$1-$9:代表第一个到第九个参数
+  c.n为10或者以上数字用括号括起来: ${10}
+lining@lining:~/shellcode$ vim demo02var.sh
+#!/bin/bash
+echo '===============$n================='
+echo $0
+echo $1
+echo $2
+
+lining@lining:~/shellcode$ bash demo02var.sh hello world
+===============$n=================
+demo02var.sh
+hello
+world
+```
+
+#### 3.3.2. $#
+
+```
+1.作用:获取所有输入参数个数
+lining@lining:~/shellcode$ vim demo02var.sh
+#!/bin/bash
+echo '===============$n================='
+echo $0
+echo $1
+echo $2
+echo '===============$#================='
+echo $#
+
+lining@lining:~/shellcode$ bash demo02var.sh hello world
+===============$n=================
+demo02var.sh
+hello
+world
+===============$#=================
+2
+```
+
+#### 3.3.3. ∗和*和∗和@
+
+```sh
+1.作用:
+  a.$*(功能描述：这个变量代表命令行中所有的参数，$*把所有的参数看成一个整体。)
+  b.$@(功能描述：这个变量也代表命令行中所有的参数，不过$@把每个参数区分对待。)
+lining@lining:~/shellcode$ vim demo02var.sh
+#!/bin/bash
+echo '===============$n================='
+echo $0
+echo $1
+echo $2
+echo '===============$#================='
+echo $#
+echo '===============$*================='
+echo $*
+echo '===============$@================='
+echo $@
+
+
+#此处由于我们在demo02var.sh中只写了$1和$2所以只有a和b能让$1以及$2接收到
+lining@lining:~/shellcode$ bash demo02var.sh a b c d 
+===============$n=================
+demo02var.sh
+a
+b
+===============$#=================
+4
+===============$*=================
+a b c d  #这里$*能接收所有命令行参数
+===============$@=================
+a b c d  #这里$@能接收所有命令行参数
+```
+
+> 注意:∗和*和∗和@的区别需要结合循环说明，下文详述
+
+#### 3.3.4. $?
+
+```sh
+1.作用:上一个语句正确,$?返回0;上一个语句有问题,$?随机返回一个数    
+lining@lining:~/shellcode$ A=10
+lining@lining:~/shellcode$ echo $?
+0
+lining@lining:~/shellcode$ A = 100
+A：未找到命令
+lining@lining:~/shellcode$ echo $?
+127
+```
+
+## 4.算数运算符
+
+```sh
+1.格式:
+  a.$[运算语句]
+  b.$((运算语句))
+2.注意:
+  以上两个格式用哪个都行
+lining@lining:~/shellcode$ A=$[1+2]
+lining@lining:~/shellcode$ echo $A
+3
+=============================================
+lining@lining:~/shellcode$ B=$[(1+2)*2]
+lining@lining:~/shellcode$ echo $B
+6
+```
+
+> 扩展:
+>
+> ```
+> 1.问题:如果要是用$((运算语句))做(1+2)*2,不能直接写成B=$((1+2)*2),因为(1+2)中的)会直接结束运算,所以运算结束了再*2就报错了
+> 
+> 2.解决:
+>   B=$(((1+2)*2))  再多套一层()
+> ```
+
+## 5.判断条件
+
+### 5.1.基本语法
+
+```
+1.格式1: test 条件
+2.格式2: [ 条件 ]   -> 条件前后要有空格
+3.注意:
+  a.条件成立或者数据不为空,结果为0(真);否则为1(假)  -> 和其他语言是相反的
+  b.test 加内容,返回0;test后面不加内容,返回1
+  c.[ 内容 ] 返回0;[ ]返回1;[ "" ]返回1
+```
+
+### 5.2.常用条件判断
+
+#### 5.2.1.整数比较运算符
+
+```
+在shell编程中,[]中的比较条件不能直接用= == > < 等符号,如果想要使用比较运算符,就需要用下面字母代替,但是用(())是可以使用== > <这些符号的
+```
+
+| 符号 | 说明                     |
+| ---- | ------------------------ |
+| -eq  | 等于(equals)             |
+| -ne  | 不等于(not equals)       |
+| -lt  | 小于(less than)          |
+| -gt  | 大于(greater than)       |
+| -le  | 小于等于(less equals)    |
+| -ge  | 大于等于(greater equals) |
+
+```sh
+lining@lining:~/shellcode$ test
+lining@lining:~/shellcode$ echo $?
+1
+=======================================
+lining@lining:~/shellcode$ test abc
+lining@lining:~/shellcode$ echo $?
+0
+=======================================
+lining@lining:~/shellcode$ [ lining ]
+lining@lining:~/shellcode$ echo $?
+0
+=======================================
+lining@lining:~/shellcode$ [ ]
+lining@lining:~/shellcode$ echo $?
+1
+lining@lining:~/shellcode$ test 1 -gt 2
+lining@lining:~/shellcode$ echo $?
+1
+=======================================
+lining@lining:~/shellcode$ test 1 -lt 2
+lining@lining:~/shellcode$ echo $?
+0
+=======================================
+lining@lining:~/shellcode$ [ 1 -gt 2 ]
+lining@lining:~/shellcode$ echo $?
+1
+=======================================
+lining@lining:~/shellcode$ ((1>2))
+lining@lining:~/shellcode$ echo $?
+1
+=======================================
+lining@lining:~/shellcode$ ((1<2))
+lining@lining:~/shellcode$ echo $?
+0
+```
+
+#### 5.2.2.按照文件权限进行判断
+
+| 符号 | 说明                      |
+| ---- | ------------------------- |
+| -r   | 是否有读的权限(read)      |
+| -w   | 是否有写的权限(write)     |
+| -x   | 是否有执行的权限(execute) |
+
+```sh
+lining@lining:~/shellcode$ test -w demo02var.sh 
+lining@lining:~/shellcode$ echo $?
+0
+=======================================
+lining@lining:~/shellcode$ chmod u-w demo02var.sh 
+lining@lining:~/shellcode$ test -w demo02var.sh 
+lining@lining:~/shellcode$ echo $?
+1
+=======================================
+lining@lining:~/shellcode$ chmod u+w demo02var.sh 
+lining@lining:~/shellcode$ test -w demo02var.sh 
+lining@lining:~/shellcode$ echo $?
+0
+```
+
+#### 5.2.3.按照文件类型进行判断
+
+| 符号 | 说明                       |
+| ---- | -------------------------- |
+| -e   | 判断文件或者文件夹是否存在 |
+| -f   | 判断是否是文件             |
+| -d   | 判断是否是文件夹           |
+
+```
+lining@lining:~/shellcode$ test -e demo02var.sh 
+lining@lining:~/shellcode$ echo $?
+0
+```
+
+#### 5.2.4.多条件判断
+
+| 符号 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| &&   | &&前面为true,才执行&&的后面(与有假则假,如果符号前面为false,后面不看了,相反如果符号前面为true,才会看符号后面的) |
+| \|\| | \|\|前面为false,才执行\|\|的后面(或有真则真,如果符号前面为true,后面不看了,相反如果符号前面为false,才会看符号后面的) |
+
+```sh
+lining@lining:~/shellcode$ test lining && echo  OK
+OK
+lining@lining:~/shellcode$ test  && echo  OK
+#啥也不输出
+
+lining@lining:~/shellcode$ test lining || echo  OK
+#啥也不输出
+
+lining@lining:~/shellcode$ test || echo notOk
+notOk
+======================================================================================
+lining@lining:~/shellcode$ test lining && echo  OK || echo notOK
+OK
+lining@lining:~/shellcode$ test && echo OK || echo notOK
+notOK
+```
+
+## 6.流程控制
+
+### 6.1.if判断
+
+```sh
+1.格式1:单个条件判断
+  if [ 判断条件 ]
+  then
+      结果  
+  fi
+      
+2.格式2:两个条件判断
+  if [ 判断条件 ]
+  then
+     结果1
+  else
+     结果2
+  fi
+
+3.格式3:多条件判断
+  if [ 判断条件 ]
+  then
+      结果1
+  elif [ 判断条件 ]
+  then
+      结果2
+  ...    
+  else
+      结果n
+  fi 
+      
+4.注意:
+  a.[ 判断条件 ]:中括号中的判断条件前后都要有空格
+  b.if 后面要有空格
+```
+
+**练习**
+
+```sh
+输入一个年龄数字，如果小于18，则输出“未成年”，如果小于60，则输出“成年人”，否则输出“老年人”，如果没有指定年龄，提示“请携带年龄”
+lining@lining:~/shellcode$ vim demo03if.sh
+#!/bin/bash
+
+if [ $# -eq 0 ]
+then
+        echo '请携带年龄'
+elif [ $1 -lt 18 ]
+then
+        echo '未成年'
+elif [ $1 -lt 60 ]
+then
+        echo '成年人'
+else
+        echo '老年人'
+fi
+
+================================================================
+lining@lining:~/shellcode$ bash demo03if.sh 
+请携带年龄
+lining@lining:~/shellcode$ bash demo03if.sh 18
+成年人
+lining@lining:~/shellcode$ bash demo03if.sh 1
+未成年
+lining@lining:~/shellcode$ bash demo03if.sh 100
+老年人
+```
+
+### 6.2.case语句
+
+```sh
+1.格式:
+  case $变量名 in 
+  值1)
+      如果变量的值等于值1，则执行程序1 
+  ;; 
+  值2) 
+      如果变量的值等于值2，则执行程序2 
+  ;; 
+      …省略其他分支… 
+  *) 
+      如果变量的值都不是以上的值，则执行此程序 
+  ;; 
+  esac
+      
+2.注意:
+  a. ;;代表结束当前分支,相当于java中的break
+  b. *代表如果以上所有都没有匹配上,默认走的分支结果
+lining@lining:~/shellcode$ vim demo04case.sh
+
+#!/bin/bash
+
+case $1 in
+1)
+        echo '床前明月光'
+        ;;
+2)
+        echo '疑是地上霜'
+        ;;
+3)
+        echo '举头望明月'
+        ;;
+4)
+        echo '低头思故乡'
+        ;;
+*)
+        echo '没有下句了,自己编吧'
+        ;;
+esac
+
+==============================================
+lining@lining:~/shellcode$ bash demo04case.sh 1
+床前明月光
+lining@lining:~/shellcode$ bash demo04case.sh 2
+疑是地上霜
+lining@lining:~/shellcode$ bash demo04case.sh 3
+举头望明月
+lining@lining:~/shellcode$ bash demo04case.sh 4
+低头思故乡
+lining@lining:~/shellcode$ bash demo04case.sh 5
+没有下句了,自己编吧
+```
+
+### 6.3.for循环
+
+#### 6.3.1.基本格式1
+
+```sh
+1.格式:
+  for ((初始化变量;循环控制条件;变量变化)) 
+  do 
+    循环语句 
+  done
+lining@lining:~/shellcode$ vim demo05for.sh
+#!/bin/bash
+sum=0
+for((i=1;i<=100;i++))
+do
+        sum=$[$sum+$i]
+done
+echo $sum
+
+===================================================
+lining@lining:~/shellcode$ bash demo05for.sh 
+5050
+```
+
+> ```sh
+> $[$sum+$i]
+>     
+> 1.最前面的$ 代表的是这是一个算数运算符
+> 2.$sum和$i中的$代表的是引用sum和i这两个变量(我们讲变量的时候输出变量A就是用的echo $A)
+> ```
+
+#### 6.3.2.基本格式2
+
+```sh
+1.格式:
+  for 变量名 in 值1 值2 值3...
+  do
+    循环语句
+  done
+2.注意:
+  变量名就代表in后面的每一个值
+lining@lining:~/shellcode$ vim demo06for.sh
+#!/bin/bash
+
+for i in a b c
+do
+  echo $i
+done
+
+===========================================================
+lining@lining:~/shellcode$ bash demo06for.sh 
+a
+b
+c
+```
+
+#### 6.3.3.∗和*和∗和@区别
+
+```sh
+1.$*和$@没有被双引号包裹时,没啥区别
+2.$*和$@被双引号包裹时,区别就出现了
+  a.$*:会将所有的参数作为一个整体,以“$1 $2 …$n”的形式输出所有参数
+  b.$@:会将各个参数分开,以“$1” “$2”…“$n”的形式输出所有参数      
+lining@lining:~/shellcode$ vim demo07for.sh
+#!/bin/bash
+
+for i in "$*"
+do
+  echo $i
+done
+
+echo '=================================='
+
+for j in "$@"
+do
+  echo $j
+done
+
+================================================================
+
+lining@lining:~/shellcode$ bash demo07for.sh a b c
+a b c
+==================================
+a
+b
+c
+```
+
+### 6.4.while循环
+
+```sh
+1.格式:
+  while [ 条件判断 ]
+  do
+    循环语句
+  done     
+lining@lining:~/shellcode$ vim demo08while.sh
+#!/bin/bash
+
+sum=0
+i=1
+while [ $i -le 100 ]
+do
+  sum=$[$sum+$i]
+  i=$[$i+1]
+done
+echo $sum
+
+==================================================
+lining@lining:~/shellcode$ bash demo08while.sh 
+5050
+比较用小括号也行  -> 扩展
+==================================================
+sum=0
+i=1
+while (($i <= 100)) 
+do
+  sum=$[$sum+$i]
+  i=$[$i+1]
+done
+echo $sum
+```
+
+## 7.read命令
+
+```sh
+1.作用:读取终端输入的内容,然后将其赋值到指定的变量中
+2.格式:
+  read -t 等待几秒 -p "提示信息" 变量名
+lining@lining:~/shellcode$ vim demo09read.sh
+#!/bin/bash
+read -t 10 -p '请在10秒内输入:' data
+echo $data
+
+===============================================
+
+lining@lining:~/shellcode$ bash demo09read.sh 
+请在10秒内输入:lining
+lining
+```
+
+## 8.方法
+
+```
+1.shell中的方法:和其他语言的方法一样,都是将一段代码封装到一个代码块中,提高代码的复用性
+```
+
+**自定义方法**
+
+```sh
+1.格式:
+  方法名(){
+    方法体代码
+  }
+2.注意:
+  a.必须在调用函数之前，先声明函数，shell脚本是逐行运行。不会像其它语言一样先编译
+  b.shell中的方法可以有返回值,但是只能通过$?系统变量获得，可以显示加：return返回，如果不加，将以最后一条命令运行结果，作为返回值。return后跟数值n（0-255）,所以一般我们不用加return 结果    
+lining@lining:~/shellcode$ vim demo10method.sh
+#!/bin/bash
+sum(){
+  add=$[$1+$2]
+  echo $add
+}
+
+read -t 10 -p '请输入第一个数据:' i
+read -t 10 -p '请输入第二个数据:' j
+
+sum $i $j
+
+=================================================================
+
+lining@lining:~/shellcode$ bash demo10method.sh 
+请输入第一个数据:10
+请输入第二个数据:20
+30
 ```
