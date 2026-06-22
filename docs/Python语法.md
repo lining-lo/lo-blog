@@ -109,7 +109,7 @@ print(var4)
 
 > 关键字:python提前定义好的,具有特殊含义的单词 -> 不用背,学到哪里记到哪里
 >
-> 
+> ![image-20251202142106109](../image/image-20251202142106109.png)
 >
 > ```python
 > import keyword #导入python中的关键字模块
@@ -245,14 +245,14 @@ print(False==0)#True
     """
      多行字符串内容
     """    
-str1 = "atguigu"
-str2 = 'atguigu'
+str1 = "lining"
+str2 = 'lining'
 print(str1)
 print(str2)
 
 #引号之间可以嵌套
-str3 = "i am 'atguigu'"
-str4 = 'i am "atguigu"'
+str3 = "i am 'lining'"
+str4 = 'i am "lining"'
 print(str3)
 print(str4)
 print("===============================")
@@ -303,7 +303,7 @@ str3 = "F:\\a\\b"
 print(str3)
 ```
 
-### 4.4.3.intern机制说明_了解,不用练习
+### 4.4.3.intern机制说明_了解
 
 ```python
 每个字符串,如果不夹杂空格或者特殊字符(比如空格),默认就会开启intern机制,就是内存共享,说白了相同的字符串会共享,内容一样,出来的地址值是一样的
@@ -1609,3 +1609,598 @@ print("abcdefg".endswith("g",0,4))
 | str.istitle()                                | 检查字符串是否非空且符合title格式                            |
 | str.maketrans(str1,str2[,str3])              | 生成翻译表供translate()使用。如果只传一个参数，它必须是将Unicode序号（整数）或字符映射到Unicode序号、字符串或None的字典。然后，字符键将转换为序数。如果传两个参数，需要str1和str2为等长的字符串，并且在生成的字典中，str1中的每个字符都将映射到str2中相同位置的字符。如果有第三个参数，它必须是一个字符串，其字符将在结果中映射到None |
 | str.translate()                              | 使用给定的翻译表替换字符串中的每个字符                       |
+
+# 11.元组_tuple
+
+```python
+1.概述:元组也是一个容器
+2.作用:存储多个数据
+3.特点:
+  a.不可变的,元素都不能修改
+  b.元素有序
+  c.有索引
+  d.元素可重复
+  e.元组中可以存储不同类型的元素
+```
+
+## 11.1.元组的创建
+
+```python
+1.定义格式1:
+  元组名 = (元素1,元素2...)
+2.定义格式2:如果元组中只有一个元素,我们需要在这个元素后面加上,否则就不是元组,而是一个普通的数据类型
+  元组名 = (元素1,)
+3.定义格式3:利用推导式创建
+  a.元组名 = (i for i in range(范围)) 这个不是最终的元素类型,返回的是generator类型(后面再说)
+  b.将generator转成tuple类型
+    tuple(元组名)
+"""
+ 1.定义格式1:
+  元组名 = (元素1,元素2...)
+"""
+tuple1 = ("张三","李四","王五")
+print(tuple1)
+
+print("===============================")
+
+"""
+  2.定义格式2:如果元组中只有一个元素,我们需要在这个元素后面加上,否则就不是元组,而是一个普通的数据类型
+  元组名 = (元素1,)
+"""
+tuple2 = ("张三",)
+# tuple2 = ("张三")
+print(tuple2,type(tuple2))
+
+print("===============================")
+
+"""
+  3.定义格式3:利用推导式创建
+    a.元组名 = (i for i in range(范围)) 这个不是最终的元素类型,返回的是generator类型(后面再说)
+    b.将generator转成tuple类型
+      tuple(元组名)
+"""
+# tuple3 = (i for i in range(10))
+# print(tuple3,type(tuple3))
+# tuple4 = tuple(tuple3)
+# print(tuple4,type(tuple4))
+
+tuple3 = tuple((i for i in range(10)))
+print(tuple3,type(tuple3))
+```
+
+## 11.2.元组操作
+
+### 11.2.1.访问元组
+
+```python
+1.格式1:
+  元组名[索引值]
+  元组名[切片规则]    
+tuple1 = ("张三", "李四", "王五", "赵六", "田七", "朱八")
+print(tuple1[0])
+print(tuple1[-1])
+print(tuple1[1:3])
+```
+
+![image-20260602102623388](../image/image-20260602102623388.png)
+
+### 11.2.2.元组合并,元组复制
+
+```python
+tuple1 = ("张三", "李四", "王五")
+tuple2 = ("赵六","田七","朱八")
+# 元组合并
+tuple3 = tuple1 + tuple2
+print(tuple3)
+
+# 元组复制指定多少份
+tuple4 = tuple1*2
+print(tuple4)
+```
+
+### 11.2.3.判断是否包含指定元素
+
+```python
+tuple1 = ("张三", "李四", "王五")
+print("张三" in tuple1)
+```
+
+### 11.2.4.获取元组长度
+
+```python
+tuple1 = ("张三", "李四", "王五")
+print(len(tuple1))
+```
+
+### 11.2.5.获取元组中最大值,最小值,元素和
+
+```python
+tuple1 = (1,2,3,4,5)
+print(max(tuple1))
+print(min(tuple1))
+print(sum(tuple1))
+```
+
+### 11.2.6.遍历元组
+
+```python
+tuple1 = ("刘备","关羽","张飞","赵云")
+for element in tuple1:
+    print(element)
+
+print("=================================")
+for index in range(len(tuple1)):
+    print(tuple1[index])
+
+print("=================================")
+for index,element in enumerate(tuple1):
+    print(index,element)
+```
+
+### 11.2.7.元组不可变
+
+```python
+1.元组不可变,指的是元组内的元素是不可变的,但是元组的地址值是可以改变的
+2.如果元组中的元素有一个可变的序列(比如列表),那么这个可变的序列中的元素是可以改变的
+tuple1 = (1,2,3,4,5)
+# tuple1[0] = 100
+# print(tuple1)
+
+print("========================")
+tuple2 = (1,2,3)
+print(id(tuple2))
+tuple2 = tuple2 + (4,5)
+print(id(tuple2))
+print("========================")
+
+tuple3 = (1,2,3,[4,5])
+tuple3[3][0] = 400
+tuple3[3].append(500)
+print(tuple3)
+```
+
+![image-20260602110001831](../image/image-20260602110001831.png)
+
+# 12.集合_set
+
+```python
+1.概述:是一个容器
+2.特点:
+  a.元素可变
+  b.元素无序
+  c.无索引
+  d.元素不能重复
+```
+
+## 12.1.集合的创建
+
+```python
+1.方式1:集合名 = {元素1,元素2...}
+2.方式2:利用set()函数,创建集合
+3.方式3:利用推导式创建
+4.注意:
+  a.如果要是想声明一个空的set集合,不能直接使用{},如果用了{},创建的就不是set集合了,而是一个字典(dict)
+  b.如果想要创建一个空的set集合,可以使用set()函数
+# 1.方式1:集合名 = {元素1,元素2...}
+set1 = {"张三","李四","王五"}
+print(set1)
+# 2.方式2:利用set()函数,创建集合
+set2 = set(["张三","李四","王五"])
+print(set2)
+# 3.方式3:利用推导式创建
+set3 = {i for i in range(1,11)}
+print(set3)
+
+print("==============")
+"""
+  a.如果要是想声明一个空的set集合,不能直接使用{},如果用了{},创建的就不是set集合了,而是一个字典(dict)
+  b.如果想要创建一个空的set集合,可以使用set()函数
+"""
+set4 = {}
+print(set4,type(set4))# <class 'dict'>
+
+set5 = set()
+print(type(set5)) # <class 'set'>
+```
+
+## 12.2.集合的操作
+
+### 12.2.1.添加元素
+
+```python
+1.格式:
+  add(元素)
+set1 = set()
+set1.add("张三")
+set1.add("李四")
+set1.add("王五")
+set1.add("王五")
+print(set1)
+```
+
+### 12.2.2.删除元素
+
+```python
+函数:remove(元素)
+set1.remove("王五")
+print(set1)
+```
+
+### 12.2.3.判断是否包含指定元素
+
+```python
+print("张三" in set1)
+```
+
+### 12.2.4.获取集合长度
+
+```python
+# 获取集合长度
+print(len(set1))
+```
+
+### 12.2.5.获取集合元素最大值,最小值,元素和
+
+```python
+# 求元素最大值,最小值,求和
+set2 = {1,2,3,4,5}
+print(max(set2))
+print(min(set2))
+print(sum(set2))
+```
+
+### 12.2.6.遍历集合
+
+```python
+set3 = {"张三", "李四", "王五", "赵六"}
+for e in set3:
+    print(e)
+
+print("=================")
+for index,element in enumerate(set3):
+    print(index,element)
+```
+
+> 1.集合没有索引的,所以不能根据索引操作元素
+>
+> 2.以上两种遍历集合的方式,推荐使用第一种
+
+## 12.3.集合常用函数
+
+| 函数                                   | 说明                                                         |
+| -------------------------------------- | ------------------------------------------------------------ |
+| set.add(x)                             | 添加元素                                                     |
+| set.update(x)                          | 添加元素，x可以为列表、元组、字符串、字典等可迭代对象        |
+| set.union(x)                           | 添加元素后返回一个新的集合，x可以为列表、元组、字符串、字典等可迭代对象 |
+| set.remove(x)                          | 从集合中移除x，x不存在则报错                                 |
+| set.discard(x)                         | 从集合中移除x，x不存在也不报错                               |
+| set.pop()                              | 随机取出集合中的一个元素，如果集合为空则报错                 |
+| set.clear()                            | 清空集合                                                     |
+| set.difference(x1,…)                   | 求set1和x1的差集，返回一个新的集合                           |
+| set.difference_update(x1,…)            | 求set1和x1的差集                                             |
+| set.intersection(x1,…)                 | 求set1和x1的交集，返回一个新的集合                           |
+| set.intersection_update(x1,…)          | 求set1和x1的交集                                             |
+| set1 & set2                            | 两集合求交集                                                 |
+| set1 \| set2                           | 两集合求并集                                                 |
+| set1 - set2                            | 两集合求差集                                                 |
+| set1.isdisjoint(set2)                  | 判断两集合是否没有交集                                       |
+| set1.issubset(set2)                    | 判断set1是否为set2的子集                                     |
+| set1.issuperset(set2)                  | 判断set2是否为set1的子集                                     |
+| set1.symmetric_difference(set2)        | 求两集合中不重复的元素，返回一个新的集合                     |
+| set1.symmetric_difference_update(set2) | 求两集合中不重复的元素                                       |
+| set.copy()                             | 拷贝集合                                                     |
+| len(set)                               | 返回集合元素个数                                             |
+| max(set)                               | 求集合中元素的最大值                                         |
+| min(set)                               | 求集合中元素的最小值                                         |
+| sum(set)                               | 求集合中元素的加和                                           |
+
+> ```python
+> set.add(x)    添加元素
+> set.update(x) 添加元素，x可以为列表、元组、字符串、字典等可迭代对象
+> set.union(x)  添加元素后返回一个新的集合，x可以为列表、元组、字符串、字典等可迭代对象
+> set.remove(x) 从集合中移除x，x不存在则报错
+> set.discard(x)    从集合中移除x，x不存在也不报错
+> set.clear()   清空集合
+> set.difference(x1,...)    求set1和x1的差集，返回一个新的集合->所谓差集就是A集合有,但B集合没有的
+> set.difference_update(x1,...) 求set1和x1的差集
+> set.intersection(x1,...)  求set1和x1的交集，返回一个新的集合
+> set.intersection_update(x1,...)   求set1和x1的交集
+> set1 & set2   两集合求交集
+> set1 | set2   两集合求并集
+> set1 - set2   两集合求差集
+> set1.isdisjoint(set2) 判断两集合是否没有交集
+> set1.issubset(set2)   判断set1是否为set2的子集
+> set1.issuperset(set2) 判断set2是否为set1的子集
+> set1.symmetric_difference(set2)   求两集合中不重复的元素，返回一个新的集合
+> set1.symmetric_difference_update(set2)    求两集合中不重复的元素
+> set.copy()    拷贝集合
+> ```
+
+```python
+# set.add(x)    添加元素
+set1 = set()
+set1.add("张三")
+print(set1)
+print("=================")
+# set.update(x) 添加元素，x可以为列表、元组、字符串、字典等可迭代对象
+set2 = set()
+set2.update(["张三","李四","王五"])
+print(set2)
+print("=================")
+# set.union(x)  添加元素后返回一个新的集合，x可以为列表、元组、字符串、字典等可迭代对象
+set3 = set()
+set4 = set3.union(["张三","李四","王五"])
+print(set4)
+print("=================")
+# set.remove(x) 从集合中移除x，x不存在则报错
+set5 = {"张三","李四","王五","赵六"}
+set5.remove("张三")
+print(set5)
+print("=================")
+# set.discard(x)    从集合中移除x，x不存在也不报错
+set6 = {"张三","李四","王五","赵六"}
+set6.discard("张三")
+print(set6)
+print("=================")
+# set.clear()   清空集合
+set7 = {"张三","李四","王五","赵六"}
+print(set7)
+set7.clear()
+print(set7)
+print("=================")
+# set.difference(x1,...)    求set1和x1的差集，返回一个新的集合->所谓差集就是A集合有,但B集合没有的
+set8 = {"张三","李四","王五","赵六"}
+set9 = {"张三","李四"}
+print(set8.difference(set9))
+print("=================")
+# set.difference_update(x1,...) 求set1和x1的差集
+set10 = {"张三","李四","王五","赵六"}
+set11 = {"张三","李四"}
+set10.difference_update(set11)
+print(set10)
+print("=================")
+# set.intersection(x1,...)  求set1和x1的交集，返回一个新的集合
+set12 = {"张三","李四","王五","赵六"}
+set13 = {"张三","王五"}
+print(set12.intersection(set13))
+print("=================")
+# set.intersection_update(x1,...)   求set1和x1的交集
+set14 = {"张三","李四","王五","赵六"}
+set15 = {"张三","王五"}
+set14.intersection_update(set15)
+print(set14)
+print("=================")
+# set1 & set2   两集合求交集
+set16 = {"张三","李四","王五","赵六"}
+set17 = {"张三","王五"}
+print(set16 & set17)
+print("=================")
+# set1 | set2   两集合求并集
+set18 = {"张三","李四","王五","赵六"}
+set19 = {"张三","王五"}
+print(set18 | set19)
+print("=================")
+# set1 - set2   两集合求差集
+set20 = {"张三","李四","王五","赵六"}
+set21 = {"张三","王五"}
+print(set20 - set21)
+print("=================")
+# set1.isdisjoint(set2) 判断两集合是否没有交集
+print(set20.isdisjoint(set21))
+print("=================")
+# set1.issubset(set2)   判断set1是否为set2的子集
+print(set20.issubset(set21))
+print(set21.issubset(set20))
+print("=================")
+# set1.issuperset(set2) 判断set2是否为set1的子集
+print(set20.issuperset(set21))
+print("=================")
+# set1.symmetric_difference(set2)   求两集合中不重复的元素，返回一个新的集合
+set22 = {"张三","李四","王五","赵六"}
+set23 = {"张三","王五"}
+print(set22.symmetric_difference(set23))
+print("=================")
+# set1.symmetric_difference_update(set2)    求两集合中不重复的元素
+set24 = {"张三","李四","王五","赵六"}
+set25 = {"张三","王五"}
+set24.symmetric_difference_update(set25)
+print(set24)
+print("=================")
+# set.copy()    拷贝集合
+set26 = {"张三","李四","王五","赵六"}
+set27 = set26.copy()
+print(set27)
+```
+
+# 13.字典_dictionary
+
+```python
+1.概述:存储键值对的集合 -> key:value形式
+2.特点:
+  a.有序
+  b.无索引
+  c.key唯一,value可重复
+  d.使用{}或者dict()定义,里面都是键值对形式,每一个键值对之间用,分割
+  e.key是可不变的,value可以是任意数据类型的数据
+```
+
+## 13.1.字典的创建
+
+```python
+1.方式1:
+  字典名 = {}
+2.方式2:
+  字典名 = dict()
+3.方式3:
+  字典名 = {"key":value,"key":value}
+4.方式4:
+  字典名 = dict(key = value,key = value)
+# 1.方式1:字典名 = {}
+dict1 = {}
+print(dict1)
+# 2.方式2:字典名 = dict()
+dict2 = dict()
+print(dict2)
+# 3.方式3:字典名 = {"key":value,"key":value}
+dict3 = {"name":"良子","age":30,"weight":400,"hobby":"板面和焖子"}
+print(dict3)
+# 4.方式4:
+#   字典名 = dict(key = value,key = value)
+dict4 = dict(name="良子",age=30,weight=400,hobby="板面和焖子")
+print(dict4)
+```
+
+## 13.2.字典的基本操作
+
+### 13.2.1.获取元素
+
+```python
+1.方式1:
+  字典名["key"]
+2.方式2:
+  字典名.get("key")
+dict1 = {"name":"良子","age":30,"weight":400,"hobby":"板面和焖子"}
+print(dict1)
+
+print("==========================")
+
+# 方式1: 字典名[key]
+print(dict1["name"])
+
+# 方式2: 字典名.get(key)
+print(dict1.get("hobby"))
+```
+
+### 13.2.2.添加元素
+
+```python
+1.格式:
+  字典名["key"] = value
+dict1["height"] = 167
+print(dict1)
+```
+
+### 13.2.3.修改元素
+
+```python
+1.格式:
+  字典名["key"] = value
+dict1["name"] = "涛哥"
+print(dict1)
+```
+
+### 13.2.4.删除元素
+
+```python
+1.方式1:利用的del语句 ->del 字典名["key"]  -> 根据key删除键值对
+2.方式2:清空字典 -> 字典名.clear()
+3.方式3:del 字典名 -> 删除字典对象
+dict1 = {"name":"金莲","age":24,"weight":100,"hobby":"涛哥"}
+# 1.方式1:利用的del语句 ->del 字典名["key"]  -> 根据key删除键值对
+del dict1["age"]
+print(dict1)
+# 2.方式2:清空字典 -> 字典名.clear()
+dict1.clear()
+print(dict1)
+# 3.方式3:del 字典名 -> 删除字典对象
+del dict1
+print(dict1)
+```
+
+### 13.2.5.判断是否包含指定的key
+
+```python
+dict3 = {"name":"金莲","age":24,"weight":100,"hobby":"涛哥"}
+print("name" in dict3)
+```
+
+### 13.2.6.获取字典长度
+
+```python
+len(字典名)
+dict4 = {"name":"金莲","age":24,"weight":100,"hobby":"涛哥"}
+print(len(dict4))
+```
+
+### 13.2.7.遍历字典
+
+```python
+1.方式1:获取所有的key  -> 字典名.keys()
+2.方式2:获取所有的value -> 字典名.values()
+3.方式3:获取键值对  -> 字典名.items()
+dict1 = {"name":"良子","age":30,"weight":400,"hobby":"板面和焖子"}
+# 1.方式1:获取所有的key  -> 字典名.keys()
+keys = dict1.keys()
+for key in keys:
+    print(key,dict1.get(key))
+
+print("==========================")
+# 2.方式2:获取所有的value -> 字典名.values()
+values = dict1.values()
+for value in values:
+    print(value)
+
+print("==========================")
+
+# 3.方式3:获取键值对  -> 字典名.items()
+items = dict1.items()
+for item in items:
+    # print(item,type(item))
+    print(item[0],item[1])
+```
+
+## 13.3.字典常用函数
+
+| 函数                           | 说明                                                         |
+| ------------------------------ | ------------------------------------------------------------ |
+| del dict[key]                  | 根据key删除键值对                                            |
+| dict.pop(key[,default])        | 获取key所对应的value，同时删除该键值对，可设置默认值->如果key不存在在字典中,就可以设置默认值,否则会报错 |
+| dict.popitem()                 | 取出字典中的最后插入的键值对(然后删除键值对)，字典为空则报错 |
+| dict.clear()                   | 清空字典                                                     |
+| dict1.update(dict2)            | 将dict2中的键值对更新到dict1中                               |
+| dict.get(key[,default])        | 获取字典中key对应value，可设置默认值                         |
+| dict.setdefault(key[,default]) | 获取字典中key对应value，可设置默认值。若key不存在于字典中，将会添加key并将value设为默认值 |
+| dict.keys()                    | 获取字典所有的key，返回一个视图对象。字典改变，视图也会跟着变化 |
+| dict.values()                  | 获取字典所有的value，返回一个视图对象                        |
+| dict.items()                   | 获取字典所有的(key,value)，返回一个视图对象                  |
+| dict.copy()                    | 拷贝字典                                                     |
+| dict.fromkeys(seq[,default])   | 以序列seq中元素做字典的key创建一个新字典，可设置value的默认值 |
+
+> dict.pop(key[,default])获取key所对应的value，同时删除该键值对，可设置默认值->如果key不存在在字典中,就可以设置默认值,否则会报错
+>
+> dict.popitem() 取出字典中的最后插入的键值对，字典为空则报错
+>
+> dict1.update(dict2) 将dict2中的键值对更新到dict1中
+>
+> dict.setdefault(key[,default])获取字典中key对应value，可设置默认值。若key不存在于字典中，将会添加key并将value设为默认值
+>
+> dict.copy() 拷贝字典
+
+```python
+dict1 = {"name":"良子","age":30,"weight":400,"hobby":"板面和焖子"}
+# # dict.pop(key[,default])获取key所对应的value，同时删除该键值对，可设置默认值->如果key不存在在字典中,就可以设置默认值,否则会报错
+# print(dict1.pop("name"))
+# print(dict1)
+print("======================")
+# dict.popitem()	取出字典中的最后插入的键值对，字典为空则报错
+# print(dict1.popitem())
+# dict1.update(dict2)	将dict2中的键值对更新到dict1中
+dict1.update({"sex":"男"})
+print(dict1)
+print("======================")
+# dict.setdefault(key[,default])获取字典中key对应value，可设置默认值。若key不存在于字典中，将会添加key并将value设为默认值
+print(dict1.setdefault("name"))
+print("======================")
+# dict.copy()	拷贝字典
+dict2 = dict1.copy()
+print(dict2)
+```
+
+# 14.列表,元组,字典和集合的区别
+
+| 数据结构           | 是否可变 | 是否重复         | 是否有序                                                     | 定义符号    |
+| ------------------ | -------- | ---------------- | ------------------------------------------------------------ | ----------- |
+| 列表（List）       | 可变     | 允许             | 有序                                                         | []或list()  |
+| 元组（Tuple）      | 不可变   | 允许             | 有序                                                         | ()或tuple() |
+| 字典（Dictionary） | 可变     | 键不允许，值允许 | 键无序（Python 3.7+版本中保持插入顺序,底层是双向链表记录key,所以有序了） | {}或dict()  |
+| 集合（Set）        | 可变     | 不允许           | 无序                                                         | {}或set()   |
