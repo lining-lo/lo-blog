@@ -2459,9 +2459,22 @@ def method02():
 method02()
 ```
 
-## 15.9.练习
+## 15.9.方法注意事项
 
-### 15.9.1.练习1
+```python
+1.方法不调用不执行
+2.方法的执行顺序只和调用顺序有关系
+3.方法中有没有返回值,取决于写没写return 结果
+  a.return 结果:证明这个方法有返回值,会先将结果返回,然后结束方法
+  b.return:仅仅代表结束方法
+4.调用方法的时候,实参和形参一致
+5.方法之间可以嵌套,但是直接写没有太大意义
+6.一个方法中不要连续写多个return,除非有if...else
+```
+
+## 15.10.练习
+
+### 15.10.1.练习1
 
 ```python
 需求:
@@ -2484,7 +2497,7 @@ result01 = method01(data)
 print(result01)
 ```
 
-### 15.9.2.练习2
+### 15.10.2.练习2
 
 ```python
 需求:
@@ -2502,7 +2515,7 @@ def method01(n):
 method01(10)
 ```
 
-### 15.9.3.练习3
+### 15.10.3.练习3
 
 ```python
 需求:
@@ -2513,7 +2526,7 @@ def get_max(list1):
 print(get_max([1,2,3,41,5]))
 ```
 
-### 15.9.4.练习4
+### 15.10.4.练习4
 
 ```python
 列表作为返回值返回
@@ -2692,4 +2705,486 @@ method(*list1)
 print("========================")
 dict1 = {"a":"张三1","b":"李四1","c":"王五1"}
 method(**dict1)
+```
+
+# 17.变量作用域
+
+## 17.1.全局和局部变量
+
+```python
+1.什么叫做作用域:变量能起作用的范围(说白了就是变量能在哪里用,不能在哪里用)
+2.分类:
+  a.全局作用域:整个xxx.py文件最外面的范围  -> 在全局作用域中定义的变量叫做全局变量
+  b.局部作用域:方法的内部范围  -> 在局部作用域中定义的变量叫做局部变量
+    
+3.注意:
+  a.全局变量:作用域当前整个py文件内部
+  b.局部变量:只作用于自己方法内部
+#定义一个全局变量
+var1 = 10
+def method01():
+    # 局部变量
+    var2 = 20
+    print(var1)#10
+    print(var2)#20
+def method02():
+    var3 = 30
+    print(var1) #10
+    print(var3) #30
+    # print(var2)
+
+method01()
+method02()
+
+print("=============================")
+
+# 如果全局变量和局部变量重名，则局部变量优先级高,遵循"就近原则",先访问局部的
+var4 = 400
+def method03():
+    var4 = 4000
+    print(var4)
+
+method03()
+```
+
+## 17.2.global关键字
+
+```python
+1.问题描述:如果局部变量和全局变量重名了,我们肯定是遵循就近原则,在局部作用域中先访问局部变量
+          如果我们想在局部作用域中对全局作用域中的全局变量进行操作,怎么办呢?
+2.问题解决:
+  在局部变量前面加上global关键字
+# global的一个简单使用
+def method01():
+    global name
+    name = "张三==="
+method01()
+print(name)
+
+print("====================")
+
+var1 = 10
+def method02():
+    # 将var1定义成global的(全局的)
+    global var1
+    # 直接在局部作用域中使用var1,python认为var1是局部变量,但是var1没有定义,所以不能直接使用
+    var1 = var1+1
+    print(var1)
+
+method02()
+print(var1)
+```
+
+# 18.方法的递归调用
+
+```python
+从前有座山,山上有座庙,庙里有个老和尚,在给小和尚讲故事,讲的啥呢?
+    从前有座山,山上有座庙,庙里有个老和尚,在给小和尚讲故事,讲的啥呢?
+        从前有座山,山上有座庙,庙里有个老和尚,在给小和尚讲故事,讲的啥呢?
+    
+这个故事需要出口    
+```
+
+## 18.1.递归的介绍和基本使用
+
+```python
+1.概述:方法内部自己调用自己
+2.注意:
+  递归需要有出口,否则会报错
+def method01():
+    print("方法的递归")
+    method01()
+    
+method01()
+需求:输出3 2 1   -> 要求用递归
+def method(n):
+    if n==1:
+        print(1)
+        return
+
+    print(n)
+    n-=1
+    method(n)
+
+method(3)
+```
+
+![image-20260605103711033](../image/image-20260605103711033.png)
+
+## 18.2.递归练习
+
+### 18.2.1.阶乘
+
+```python
+需求:利用递归实现1-3的阶乘
+     3*2*1   -> 相当于3乘以2的阶乘
+分析:假如我们定义一个方法method,参数代表的是几的阶乘  -> method(n) -> n接收几就是几的阶乘
+    method(1)   ->  1
+    method(2)   -> 2*method(1)
+    method(3)   -> 3*method(2)
+    
+    ...
+    method(n)  -> n*method(n-1)
+def method(n):
+    if n==1:
+        return 1
+    return n*method(n-1)
+
+result = method(3)
+print(result)
+```
+
+![image-20260605105147284](../image/image-20260605105147284.png)
+
+### 18.2.2.斐波那契数列_不死神兔
+
+```python
+故事得从西元1202年说起，话说有一位意大利青年，名叫斐波那契。
+在他的一部著作中提出了一个有趣的问题：假设一对刚出生的小兔一个月后就能长成大兔，再过一个月就能生下一对小兔，并且此后每个月都生一对小兔，一年内没有发生死亡
+问：一对刚出生的兔子，一年内繁殖成多少对兔子? 144
+```
+
+> 规律：一个数等于前两个数之和，比如: 1 1 2 3 5 8 13 21 34 55…
+
+![image-20260605111823657](../image/image-20260605111823657.png)
+
+```python
+分析:假设定义一个method方法,代表繁殖兔子,参数为month,代表月份
+
+method(1)  1
+method(2)  1
+method(3)  2    -> method(1)+method(2)
+method(4)  3    -> method(2)+method(3)
+method(5)  5    -> method(3)+method(4)
+method(6)  8    -> method(4)+method(5)
+
+结论:
+  method(n)   -> method(n-1)+method(n-2)
+def method(month):
+    if month==1 or month==2:
+        return 1
+    return method(month-1)+method(month-2)
+print(method(12))
+```
+
+# 19.冒泡排序和二分查找
+
+## 19.1.冒泡排序
+
+```
+1.我们默认都是升序
+2.要求:
+  列表中的前面的元素和后面的元素比较,大的往后走,小的往前走
+```
+
+![image-20260605114030857](../image/image-20260605114030857.png)
+
+```python
+def method(list1):
+    # 第一回比较,比较了4次
+    for i in range(0,len(list1)-1-0):
+        if list1[i]>list1[i+1]:
+            list1[i],list1[i+1] = list1[i+1],list1[i]
+
+    # 第二回比较,比较了3次
+    for i in range(0,len(list1)-1-1):
+        if list1[i]>list1[i+1]:
+            list1[i],list1[i+1] = list1[i+1],list1[i]
+
+
+    # 第三回比较,比较了2次
+    for i in range(0,len(list1)-1-2):
+        if list1[i]>list1[i+1]:
+            list1[i],list1[i+1] = list1[i+1],list1[i]
+
+    # 第四回比较,比较了1次
+    for i in range(0,len(list1)-1-3):
+        if list1[i]>list1[i+1]:
+            list1[i],list1[i+1] = list1[i+1],list1[i]
+
+    return list1
+
+list1 = [5,4,3,2,1]
+result_list = method(list1)
+print(result_list)
+def method(list1):
+    # 外面的循环控制比较多少回
+    for i in range(0, len(list1) - 1):
+        # 内层循环控制比较的次数以及换位,但是要保证没一回都少比较一次
+        for j in range(0, len(list1) - 1 - i):
+            if list1[j] > list1[j + 1]:
+                list1[j], list1[j + 1] = list1[j + 1], list1[j]
+    return list1
+
+
+list1 = [5, 4, 3, 2, 1]
+result_list = method(list1)
+print(result_list)
+```
+
+## 19.2.二分查找
+
+```python
+1.前提:元素是升序的
+2.中心思想:
+  每次要和列表的中间索引比较,每次干掉一半
+```
+
+![image-20260605144822491](../image/image-20260605144822491.png)
+
+```python
+def binary_search(list1, key):
+    #定义最大索引和最小索引
+    min = 0
+    max = len(list1) - 1
+    #循环查找
+    while min <= max:
+        #算中间索引
+        mid = (min + max) // 2
+        if key>list1[mid]:
+            min = mid + 1
+        elif key<list1[mid]:
+            max = mid - 1
+        else:
+            return mid
+    return -1
+
+
+list1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+result = binary_search(list1,90)
+print(result)
+```
+
+# 20.匿名方法
+
+## 20.1.匿名方法介绍
+
+```python
+1.概述:没有名字的方法,也不需要def关键字来定义,只留下参数和方法体
+2.定义格式:
+  lambda 参数 : 表达式
+
+  匿名方法会将将最终的结果自动返回,不要手动写return 结果
+3.使用场景:
+  如果一个方法只用一次,实现非常简单,可以考虑使用匿名方法
+
+4.注意:
+  a.匿名方法只能写一行,不能写多行代码
+  b.不能写代码块(if,for,while)
+  c.冒号后面不能写多个表达式
+  d.匿名方法中的结果自动作为返回值返回,不要写return
+# 定义一个方法,实现两个整数相加
+def add(a,b):
+    return a+b
+
+# 定义一个方法,实现两个整数相减
+def sub(a,b):
+    return a-b
+
+#定义一个方法,实现计算
+def calculate(a,b,method):
+    print(f"计算的结果为:{method(a,b)}")
+
+#调用
+calculate(10,20,add)
+calculate(10,20,sub)
+
+print("========================================")
+def calculate02(a,b,method):
+    print(f"计算的结果为:{method(a,b)}")
+
+calculate02(10,20,lambda a,b:a+b)
+calculate02(10,20,lambda a,b:a-b)
+```
+
+## 20.2.匿名方法作为内置方法的参数使用
+
+```python
+可以将匿名方法与python中常用的内置方法结合使用
+```
+
+### 20.2.1.内置方法1:sorted()
+
+```python
+1.方法:sorted(iterable, /, *, key=None, reverse=False)
+      iterable:可迭代的对象
+      key:排序前对每个元素调用的方法,用返回值比较
+      reverse:是否降序,True的话就是降序
+    
+2.作用:对序列中的元素进行排序
+3.需求:定义三名学生的姓名年龄,并按照年龄进行排序
+def method(dict):
+    return dict["age"]
+
+# 定义一个列表，保存多个学生信息
+stu_list = [
+    {"name": "张三", "age": 18},
+    {"name": "李四", "age": 20},
+    {"name": "王五", "age": 19},
+]
+# 调用sorted方法,传递stu_list,会遍历这个列表中的元素
+# 在调用method的时候会自动将元素作为参数传递给method
+print(sorted(stu_list,key=method))
+print("===============================")
+print(sorted(stu_list,key=lambda x:x["age"]))
+print(sorted(stu_list,key=lambda x:x["age"],reverse=True))
+```
+
+### 20.2.2.内置方法2:map()
+
+```python
+1.方法:map(function, iterable1)
+          function:方法,这个方法是对每个元素进行处理,操作
+          iterator1:可迭代的对象,function传递的参数就是对这个可迭代对象中的元素进行操作
+        
+2.作用:对序列中的元素逐一处理->遍历
+3.需求:定义一个列表,保存一些整数,让这些整数都自己乘以自己
+def method(e):
+    return e*e
+
+list1 = [1,2,3,4,5]
+# result = map(method,list1)
+# print(list(map(method,list1)))
+print(list(map(lambda e:e*e,list1)))
+```
+
+### 20.2.3.内置方法3:filter()
+
+```python
+1.方法:filter(function,iterable1)
+      function:方法,此方法接收filter遍历可迭代对象中的元素,然后在这个方法中做条件判断,进行过滤
+      iterable1:可迭代的对象
+2.作用:对序列中的元素过滤
+3.需求:定义一个列表,保存一些整数,取出大于0的元素
+def method(e):
+    return e>0
+
+list1 = [1,-2,-3,-4,5]
+
+# print(list(filter(method,list1)))
+print(list(filter(lambda e:e>0,list1)))
+```
+
+### 20.2.4.内置方法4:reduce()
+
+```python
+1.方法:reduce(function,iterable1)
+      function:方法,接收reduce对可迭代对象中的元素,然后进行计算
+      iterable1:可迭代的对象
+        
+      返回是一个int值
+    
+2.作用:方法对序列中元素进行累积 -> 比如累加(两两相加,然后用结果和后面的数再加),累乘法(两两相乘,然后用结果和后面的数再乘)
+3.需求:定义一个列表,保存一些整数,将这些整数相加
+    累加,累乘等操作
+from functools import reduce
+
+
+def method(x,y):
+    return x+y
+
+list1 = [1,2,3,4,5]
+
+# print(reduce(method,list1))
+print(reduce(lambda x,y:x*y,list1))
+```
+
+# 21.方法的说明文档
+
+```python
+1.概述:写在方法里的文字说明
+2.作用:描述这个方法的功能,需要哪些参数,返回什么结果等
+def method(x,y):
+    """
+    :param x: 第一个参数,用于接收元素和元素之间的运算结果
+    :param y: 第二个参数,代表的是后一个元素,和x做运算
+    :return:  返回的是累加和
+    """
+    return x+y
+
+list1 = [1,2,3,4,5]
+
+# print(reduce(method,list1))
+print(reduce(lambda x,y:x*y,list1))
+```
+
+![image-20260605163919416](../image/image-20260605163919416.png)
+
+# 22.文件操作
+
+```python
+1.主要作用:
+  a.往文件中写数据
+  b.将数据从文件中读出来
+2.为啥要往文件中写数据:就是为了存数据
+  之前学的列表,集合,字典,元组作为容器来说都可以存储数据,那为啥还要往文件中存呢?
+  原因:列表,集合,字典,元组都是临时存储,代码运行的时候,里面的数据还在,运行完毕,里面的数据就消失了,所以我们就想着能不能将数据永久保存,我们就想将数据存到本地硬盘的文件中
+  到时候想用这些数据,就可以直接从硬盘上读回来使用即可
+```
+
+## 22.1.文件概述
+
+```python
+1.概述:在磁盘上保存数据的集合
+2.作用:保存数据
+3.文件的分类:
+  本文,图片,音乐,视频等
+4.计算机常识:
+  a.xxx.jpg 一定是图片嘛?  不一定
+  b.什么是路径分隔符,什么是路径名称分隔符
+    路径分隔符:一个路径和另外一个路径之间的分隔符   ;
+    路径名称分隔符:一个路径中文件夹和文件夹或者文件夹和文件之间的分隔符  
+                windows:\
+                linux:/
+        
+  c.什么是文本文档:用记事本打开,人能看懂的文档
+    .java  .txt .html  .css  .py
+    
+    
+5.注意:
+  数据存储到硬盘上,最终都是以二进制存储的,我们所看到的图片啥的也都是CPU通过二进制翻译过来的
+
+  但是大家发现,在文件中内存数据都是有大小的,都是以字节开始的,字节只是我们存储数据的计量单位    
+```
+
+> 8个二进制位(bit) = 1byte
+>
+> 1024byte = 1kb
+>
+> 1024kb = 1MB
+>
+> 1024MB = 1GB
+>
+> …TB…
+
+## 22.2.文件的分类
+
+### 22.2.1.纯文本文件
+
+```python
+1.概述:说白了就是能用记事本打开人能看懂的文件
+  存取数据都有统一的编码规则:ASCII,ISO-8859-1,GB2312,GBK,UTF-8,UTF-16
+```
+
+### 22.2.2.二进制文件
+
+```python
+没有统一的编码规则,直接由0和1组成
+比如:图片,视频  -> 需要用对应的软件去解码打开
+```
+
+## 22.3.路径
+
+### 22.3.1.绝对路径
+
+```python
+带盘符的路径
+```
+
+### 22.3.2.相对路径
+
+```python
+不带盘符的,相对某个位置来说的
+./  :当前位置
+../ :上一个目录位置
 ```
