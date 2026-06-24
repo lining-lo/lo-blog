@@ -3122,69 +3122,487 @@ print(reduce(lambda x,y:x*y,list1))
   到时候想用这些数据,就可以直接从硬盘上读回来使用即可
 ```
 
-## 22.1.文件概述
+## 22.1.操作文件
+
+![image-20260606092014549](../image/image-20260606092014549.png)
+
+### 22.1.1.创建文件对象
 
 ```python
-1.概述:在磁盘上保存数据的集合
-2.作用:保存数据
-3.文件的分类:
-  本文,图片,音乐,视频等
-4.计算机常识:
-  a.xxx.jpg 一定是图片嘛?  不一定
-  b.什么是路径分隔符,什么是路径名称分隔符
-    路径分隔符:一个路径和另外一个路径之间的分隔符   ;
-    路径名称分隔符:一个路径中文件夹和文件夹或者文件夹和文件之间的分隔符  
-                windows:\
-                linux:/
+1.方法:
+  open(文件路径,模式):打开文件通道,返回一个file对象,如果不指定模式,默认就是r[只读]
+  file1 = open("文件路径",mode="读写模式",encoding="编码规则")
+    
+2.注意:
+  a.读写模式可以组合,比如:"w+"
+  b.r w a x 不能组合的,他们只能和b t +组合
+```
+
+![image-20260606092436882](../image/image-20260606092436882.png)
+
+| 模式 | 说明                                                       |
+| ---- | ---------------------------------------------------------- |
+| r    | 读写方式：只读，文件若不存在会报错。默认此模式             |
+| w    | 读写方式：写入，写入前清空原有数据。文件不存在会创建文件   |
+| a    | 读写方式：追加写入，在原有数据后追加，文件不存在会创建文件 |
+| x    | 读写方式：创建新文件并写入，文件若已存在会报错             |
+| b    | 编码方式：以二进制打开。一般用于非文本文件,如图片等        |
+| t    | 编码方式：以文本模式打开，默认此模式                       |
+| +    | 能读能写                                                   |
+
+> 完整形式:
+>
+> ```python
+> open(
+> 
+> file,  # 文件路径     [重点]
+> 
+> mode="r",  # 文件打开模式     [重点]
+> 
+> buffering=-1,  # 缓冲
+> 
+> encoding=None,  # 文本编码方式，一般用utf8          [重点]
+> 
+> errors=None,  # 报错级别
+> 
+> newline=None,  # 区分换行符
+> 
+> closefd=True,  # 传入的file参数类型
+> 
+> opener=None,  # 设置自定义开启器，开启器的返回值必须是一个打开的文件描述符
+> 
+> )
+> ```
+
+### 22.1.2.文件读写
+
+```python
+1.常用方法
+  a.open("文件路径",mode="读写模式",encoding="编码规则") 打开文件,建立程序和文件之间的通道
+  b.write("内容")往文件中写入内容
+
+  c.read():读数据,方法参数可以指定读取多少个字节,如果不写,就默认都读,返回的是str
+    如果读取的时候指定了文本模式(t模式),read方法返回的是字符串,读到末尾时会返回"",这个t模式是默认的
+    如果读取的时候指定了二进制模式(b模式),read方法返回的是bytes字节对象,读到末尾时会返回b""(空字节串)
+    
+  d.close():关闭文件 ->关闭程序和文件之间的通道  
+  e.readLine():一次读取一行,返回的是str,返回的内容自动包含\n,也可以传递读取指定字节数,但是我们一般不会这么干
+```
+
+#### 22.1.2.1.写数据
+
+```python
+# 调用open方法,建立内存和文件之间的通道
+file1 = open("1.txt","w",encoding="utf-8")
+file1.write("我爱我的祖国\n")
+file1.write("一刻也不能分割\n")
+file1.close()
+```
+
+#### 22.1.2.2.读数据_读取指定字节或者字符的数据
+
+```python
+# 调用open方法,建立内存和文件之间的通道
+file1 = open("1.txt","rt",encoding="utf-8")
+# data1 = file1.read()
+# data1 = file1.read(3)
+# print(data1)
+#
+# data2 = file1.read(3)
+# print(data2)
+#
+# data3 = file1.read(3)
+# print(data3)
+# print("===========================")
+# data4 = file1.read(3)
+# print(data4)
+while True:
+    data = file1.read(5)
+    if data=="":
+        break
+    print(data)
+file1.close()
+```
+
+#### 22.4.2.3.读数据_一次读一行
+
+```python
+file1 = open("1.txt","rt",encoding="utf-8")
+# data1 = file1.readline()
+# print(data1)
+#
+# data2 = file1.readline()
+# print(data2)
+while True:
+    data = file1.readline()
+    if data=="":
+        break
+    print(data)
+file1.close()
+```
+
+## 22.2.文件复制
+
+```python
+复制一张图片
+```
+
+### 22.2.1.思路分析
+
+![image-20260606105215975](../image/image-20260606105215975.png)
+
+### 22.2.2.代码实现
+
+```python
+def copy_file(src_path,dst_path):
+    #1.创建源文件对象
+    src_file = open(src_path,"rb")
+    #2.创建目标文件对象
+    dst_file = open(dst_path,"wb")
+    #3.边读边写
+    while True:
+        data = src_file.read(1024)
+        if data==b"":
+            break
+        else:
+            dst_file.write(data)
+    #4.关闭文件
+    dst_file.close()
+    src_file.close()
+
+
+copy_file("D:\\图片\\宝蓝.png","E:\\图片\\宝蓝1.png")
+```
+
+# 23.文件操作扩展
+
+## 23.1.python中的False值
+
+```python
+python中的False值:
+  False
+  None
+  0          # 整数 0
+  0.0        # 浮点 0
+  0j         # 复数 0
+  ""         # 空字符串
+  []         # 空列表
+  ()         # 空元组
+  {}         # 空字典
+  set()      # 空集合
+  range(0)   # 空 range
+print(bool(False))    # False
+print(bool(None))     # False
+print(bool(0))        # False
+print(bool(0.0))      # False
+print(bool(0j))       # False
+print(bool(""))       # False
+print(bool([]))       # False
+print(bool(()))       # False
+print(bool({}))       # False
+print(bool(set()))    # False
+print(bool(range(0))) # False
+if "abc":
+    print("哈哈")
+else:
+    print("呵呵")
+set1 = set()
+set1.add("abc")
+if set1:
+    print("嘿嘿")
+else:
+    print("嘻嘻")
+```
+
+## 23.2.改造文件操作中的读文件操作
+
+```python
+file1 = open("1.txt","rt",encoding="utf-8")
+# data1 = file1.readline()
+# print(data1)
+#
+# data2 = file1.readline()
+# print(data2)
+while True:
+    data = file1.readline()
+    if not data:
+        break
+    print(data)
+file1.close()
+```
+
+## 23.3.改造文件操作中的文件复制
+
+```python
+def copy_file(src_path,dst_path):
+    #1.创建源文件对象
+    src_file = open(src_path,"rb")
+    #2.创建目标文件对象
+    dst_file = open(dst_path,"wb")
+    #3.边读边写
+    while True:
+        data = src_file.read(1024)
+        if not data:
+            break
+        else:
+            dst_file.write(data)
+    #4.关闭文件
+    dst_file.close()
+    src_file.close()
+
+
+copy_file("E:\\图片\\宝蓝.png","E:\\图片\\宝蓝1.png")
+```
+
+# 24.浅拷贝和深拷贝
+
+```python
+两个变量指向同一个对象,修改其中一个,会互相影响
+arr1 = [10,20,30]
+arr2 = arr1
+arr2[2] = 300
+print(arr1)#[10,20,300]
+print(arr2)#[10,20,300]
+```
+
+![image-20251216210525145](../image/image-20251216210525145-17806187261809.png)
+
+> 通过上面的代码发现,修改一个列表中的元素会影响另外一个列表,那么怎么解决呢?
+>
+> 拷贝
+
+## 24.1.浅拷贝
+
+```python
+调用copy对象中的copy方法进行列表拷贝,生成一个新的列表对象,产生了新的空间
+import copy
+
+arr1 = [10,20,30]
+arr2 = copy.copy(arr1)
+arr2[2] = 300
+print(arr1)#[10,20,30]
+print(arr2)#[10,20,300]
+```
+
+![image-20251216213822929](../image/image-20251216213822929-178061872618110.png)
+
+> 浅拷贝存在的问题:
+>
+> 如果arr1中嵌套了列表,修改浅拷贝生成的新列表arr2中的列表数据,会影响arr1
+
+## 24.2.深拷贝
+
+```python
+创建一个外层容器,并对其内部所有的可变对象进行递归复制
+import copy
+
+arr1 = [10,20,[30,40]]#嵌套列表
+print(arr1)#[10, 20, [30, 40]]
+arr2 = copy.deepcopy(arr1)
+arr2[2][0] = 300
+print(arr1[2][0])#30
+print(arr2[2][0])#300
+```
+
+![image-20251216222525574](../image/image-20251216222525574-178061872618112.png)
+
+> 深拷贝:即使列表中嵌套列表,修改一个列表中的数据,也不会影响另外一个列表中的数据->因为深拷贝会将嵌套的列表都重新拷贝一份儿
+
+# 25.面向对象介绍
+
+```python
+1.什么叫做面向对象:是一种编程方式,是一种编程思想
+  a.python是一个支持面向对象思想编程的语言(python是一个支持多种编程范式的语言->面向过程+面向对象+函数式编程)
+  b.java的代码都是写在类中的,所以java是纯面向对象的
+    python不是说所有的代码必须写在类中,所以python不是纯面向对象的
+2.为啥要使用面向对象思想编程:
+  为了少写代码,有很多功能别人都准备好了,我们直接调用就行了,不用我们自己一步一步实现了
+3.什么时候使用面向对象思想编程:
+  当想用别人准备好的功能时,就要使用面向对象思想编程了
+4.怎么使用面向对象思想编程:
+  找对象,去用对象名点成员
+list1 = [1,2,3,4,5]
+# 面向对象思想编程
+"""
+  list1就相当于一个对象
+  reverse就相当于这个对象提前定义好的功能
+  我们直接用list1这个对象实现好的reverse功能就直接实现了元素翻转
+  
+  代码写起来就简单了,少了
+"""
+list1.reverse()
+print(list1)
+```
+
+# 26.类和对象
+
+## 26.1.类_class
+
+```python
+1.概述:一类事物的抽象表示形式  -> 包含了这一类事物中共同的属性(这些对象有啥)和行为(这些对象能干啥)
+2.组成部分:
+  a.类的初始化方法(在这个初始化方法里面定义实例属性):初始化对象属性的方法,在创建对象之后会自动调用,主要用于定义实例属性以及为属性赋值
+    __init__(self,属性1,属性2...):
+        self.属性名 = 属性值
         
-  c.什么是文本文档:用记事本打开,人能看懂的文档
-    .java  .txt .html  .css  .py
-    
-    
-5.注意:
-  数据存储到硬盘上,最终都是以二进制存储的,我们所看到的图片啥的也都是CPU通过二进制翻译过来的
+  b.实例(对象)方法:这类事物能干啥      
+class Person:
+    """
+      __init__:初始化方法,在创建对象的之后会自动代用,作用就是为属性初始化
+      self:代表的是当前对象,哪个对象调用的self所在的方法,self就代表哪个对象
+      name和age就是我们定义的实例属性
 
-  但是大家发现,在文件中内存数据都是有大小的,都是以字节开始的,字节只是我们存储数据的计量单位    
+      在init中为属性赋值
+    """
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+
+    #实例方法
+    def eat(self):
+        print(f"{self.name}正在吃东西...")
+
+    def drink(self):
+        print(f"{self.name}正在喝东西...")
+
+    def la(self):
+        print(f"{self.name}正在拉屎...")
+
+    def sa(self):
+        print(f"{self.name}正在撒尿...") 
 ```
 
-> 8个二进制位(bit) = 1byte
->
-> 1024byte = 1kb
->
-> 1024kb = 1MB
->
-> 1024MB = 1GB
->
-> …TB…
-
-## 22.2.文件的分类
-
-### 22.2.1.纯文本文件
+## 26.2.对象_object
 
 ```python
-1.概述:说白了就是能用记事本打开人能看懂的文件
-  存取数据都有统一的编码规则:ASCII,ISO-8859-1,GB2312,GBK,UTF-8,UTF-16
+1.概述:一类事物的具体体现
+2.格式:
+  对象名 = 类名(为属性赋的具体的值)
+3.调用实例属性和实例方法
+  对象名.属性名 = 值
+  对象名.方法名(实参)  
+class Person:
+    """
+      __init__:初始化方法,在创建对象的之后会自动代用,作用就是为属性初始化
+      self:代表的是当前对象,哪个对象调用的self所在的方法,self就代表哪个对象
+      name和age就是我们定义的实例属性
+
+      在init中为属性赋值
+    """
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+
+    #实例方法
+    def eat(self):
+        print(f"{self.name}正在吃东西...")
+
+    def drink(self):
+        print(f"{self.name}正在喝东西...")
+
+    def la(self):
+        print(f"{self.name}正在拉屎...")
+
+    def sa(self):
+        print(f"{self.name}正在撒尿...")
+
+
+# 创建对象
+p1 = Person("张三",18)
+print(p1.name,p1.age)
+p1.eat()
+p1.drink()
+
+print("===========================")
+p2 = Person("王五",20)
+print(p2.name,p2.age)
+p2.eat()
+p2.drink()
 ```
 
-### 22.2.2.二进制文件
+> ![image-20260606155251472](../image/image-20260606155251472.png)
+
+## 26.3.对象_对象的内存图说明
 
 ```python
-没有统一的编码规则,直接由0和1组成
-比如:图片,视频  -> 需要用对应的软件去解码打开
+class Person:
+
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+
+    #实例方法
+    def eat(self):
+        print(f"{self.name}正在吃东西...")
+
+# 创建对象
+p1 = Person("张三",18)
+print(p1.name,p1.age)
+p1.eat()
+
+
+print("===========================")
+p2 = Person("王五",20)
+print(p2.name,p2.age)
+p2.eat()
 ```
 
-## 22.3.路径
+![image-20260606162938626](../image/image-20260606162938626.png)
 
-### 22.3.1.绝对路径
+# 27.类中成员的说明
+
+## 27.1.init方法
 
 ```python
-带盘符的路径
+1.概述:__init__叫做初始化方法
+2.作用:在创建对象的时候对对象的属性进行初始化
+3.特点:当我们创建对象之后,python会自动调用__init__方法,并将新创建的对象作为第一个参数(第一个参数名通常叫做self)传给self
+4.注意:
+  a.__init__方法不是必须提供的,如果没有显式写出,python底层会提供一个默认的__init__,只不过方法体没有赋值而已
+  b.利用只有一个self参数的init创建对象,此时在init中需要直接为属性赋值 
+  c.如果同时写了两个init,后面的会把前面的覆盖掉,但是无参的没有意义
+class Person:
+
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+
+    def __init__(self):
+        self.name = "张三"
+
+p1 = Person("张三")
+print(p1.name)
+print(p1.age)
 ```
 
-### 22.3.2.相对路径
+## 27.2.init方法中的self参数说明
 
 ```python
-不带盘符的,相对某个位置来说的
-./  :当前位置
-../ :上一个目录位置
+1.概述:self接收的是当前对象  -> 哪个对象调用的self所在的方法,self就代表哪个对象
+2.作用:用于接收调用方法的那个对象
+3.使用:调用方法的时候python会自动给self传递对象
+4.注意:在类中,不能在一个实例方法中调用另外一个实例方法,只能用self去调用
+class Person:
+    def __init__(self,name,age):
+        self.name = name
+        self.age = age
+
+    def eat(self):
+        print(id(self),"**************")
+        print(f"{self.name}正在吃东西...")
+
+
+p1 = Person("张三",18)
+print(p1.name,p1.age)
+p1.eat()
+print(id(p1))
+
+print("===========================")
+
+p2 = Person("王五",20)
+print(p2.name,p2.age)
+p2.eat()
+print(id(p2))
 ```
+
+![image-20260606165552110](../image/image-20260606165552110.png)
