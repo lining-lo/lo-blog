@@ -1,10 +1,11 @@
 # 📚 个人博客文档列表
 
-> ⏱ 自动生成于：2026/6/29 09:50:15
-> 📄 文档总数：**5** 个
+> ⏱ 自动生成于：2026/6/29 10:25:37
+> 📄 文档总数：**6** 个
 
 1. [创建一个脚手架.md](docs/创建一个脚手架.md)
 2. [Doctor操作.md](docs/Doctor操作.md)
-3. [Linux操作.md](docs/Linux操作.md)
-4. [Mysql数据库.md](docs/Mysql数据库.md)
-5. [Python语法.md](docs/Python语法.md)
+3. [FastApi框架.md](docs/FastApi框架.md)
+4. [Linux操作.md](docs/Linux操作.md)
+5. [Mysql数据库.md](docs/Mysql数据库.md)
+6. [Python语法.md](docs/Python语法.md)
