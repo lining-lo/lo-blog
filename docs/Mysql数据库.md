@@ -1383,12 +1383,7 @@ SELECT CONCAT_WS(',','你好',uname) uname,age,sex FROM t_user;
 
 ```mysql
 -- 将hello转成大写
-
-
--- 查询t_user,uname变成大写
--- 将hello转成大写
 SELECT UPPER('hello');
--- SELECT UPPER('一二三四');  -- 壹 贰 叁 肆
 
 -- 查询t_user,uname变成大写
 SELECT UPPER(uname) uname,age,sex FROM t_user;
@@ -1398,7 +1393,7 @@ SELECT UPPER(uname) uname,age,sex FROM t_user;
 
 ```mysql
 -- 查询t_user,uname变成小写
-自己写
+SELECT LOWER(uname) uname,age,sex FROM t_user;
 ```
 
 ### 12.1.5 移除空格函数
@@ -1442,13 +1437,13 @@ SELECT SUBSTRING('abcdefg',2,2);
 练习1：获取 hello,world 从第二个字符开始的完整子串
 
 ```mysql
-自己写
+SELECT SUBSTRING('hello,world',2);
 ```
 
 练习2：获取 hello,world 从第二个字符开始但是长度为4的子串
 
 ```mysql
-自己写
+SELECT SUBSTRING('hello,world',2,4);
 ```
 
 ## 12.2.数值函数
@@ -1467,18 +1462,6 @@ SELECT SUBSTRING('abcdefg',2,2);
 
 ```mysql
 -- 练习1： 获取 -12 的绝对值
-
-
--- 练习2： 将 -11.2 向上取整
-
-
--- 练习3： 将 1.6 向下取整
-
-
--- 练习4： 获得2的2次幂的值
-
--- 练习5： 获得一个在0-100之间的随机数
--- 练习1： 获取 -12 的绝对值
 SELECT ABS(-12);
 
 -- 练习2： 将 -11.2 向上取整
@@ -1486,7 +1469,6 @@ SELECT CEIL(-11.2);
 
 -- 练习3： 将 1.6 向下取整
 SELECT FLOOR(1.6);
-
 
 -- 练习4： 获得2的2次幂的值
 SELECT POW(2,2);
@@ -1510,16 +1492,6 @@ SELECT RAND()*100;
 
 ```mysql
 -- 练习1：获取当前的日期(仅仅需要年月日)
-
-
--- 练习2： 获取当前的时间（仅仅需要时分秒）
-
-
--- 练习3： 获取当前日期时间（包含年月日时分秒）
-
-
--- 练习4: 获取到5月1日还有多少天
--- 练习1：获取当前的日期(仅仅需要年月日)
 SELECT CURDATE();
 
 -- 练习2： 获取当前的时间（仅仅需要时分秒）
@@ -1540,35 +1512,35 @@ SELECT DATEDIFF('2026-10-1',NOW());
 | IFNULL(value1, value2)                                       | 如果value1不为空，返回value1，否则返回value2               |
 | CASE WHEN 条件1 THEN result1 WHEN 条件2 THEN result2 … [ELSE resultn] END | 相当于Java的if…else if…else… 相当于python中的if…elif…else… |
 
-- 练习1：获取用户的姓名、性别，如果性别为1则显示’男’，否则显示’女’；要求使用if函数查询：
+练习1：获取用户的姓名、性别，如果性别为1则显示’男’，否则显示’女’；要求使用if函数查询：
 
-  ```mysql
-  SELECT uname,age,IF(sex=1,'男','女') sex FROM t_user;
-  ```
+```mysql
+SELECT uname,age,IF(sex=1,'男','女') sex FROM t_user;
+```
 
-- 练习2：获取用户的姓名、性别，如果性别为null则显示为0；要求使用ifnull函数查询：
+练习2：获取用户的姓名、性别，如果性别为null则显示为0；要求使用ifnull函数查询：
 
-  ```mysql
-  SELECT uname,age,IFNULL(sex,0) sex FROM t_user;
-  ```
+```mysql
+SELECT uname,age,IFNULL(sex,0) sex FROM t_user;
+```
 
-- 练习3：如果age<=12,显示儿童,如果age<=18,显示少年,如果age<=40,显示中年,否则显示老年
+练习3：如果age<=12,显示儿童,如果age<=18,显示少年,如果age<=40,显示中年,否则显示老年
 
-  ```mysql
-  SELECT 
-    uname,
-    CASE
-      WHEN age <= 12 
-      THEN '儿童' 
-      WHEN age <= 18 
-      THEN '少年' 
-      WHEN age <= 40 
-      THEN '中年' 
-      ELSE '老年' 
-    END age 
-  FROM
-    t_user ;
-  ```
+```mysql
+SELECT 
+  uname,
+  CASE
+    WHEN age <= 12 
+    THEN '儿童' 
+    WHEN age <= 18 
+    THEN '少年' 
+    WHEN age <= 40 
+    THEN '中年' 
+    ELSE '老年' 
+  END age 
+FROM
+  t_user ;
+```
 
 # 13.DCL语句
 
@@ -1620,17 +1592,17 @@ d.'用户名'@'主机名':给哪个用户分配权限
 
 **具体操作：**
 
-1. 给user1用户分配对test这个数据库操作的权限
+给user1用户分配对test这个数据库操作的权限
 
-   ```mysql
-   GRANT CREATE,ALTER,DROP,INSERT,UPDATE,DELETE,SELECT ON test.* TO 'user1'@'localhost';
-   ```
+```mysql
+GRANT CREATE,ALTER,DROP,INSERT,UPDATE,DELETE,SELECT ON test.* TO 'user1'@'localhost';
+```
 
-2. 给user2用户分配对所有数据库操作的权限
+给user2用户分配对所有数据库操作的权限
 
-   ```mysql
-   GRANT ALL ON *.* TO 'user2'@'%';
-   ```
+```mysql
+GRANT ALL ON *.* TO 'user2'@'%';
+```
 
 ## 13.3 撤销授权
 
@@ -1640,11 +1612,11 @@ REVOKE  权限1, 权限2... ON 数据库.表名 FROM '用户名'@'主机名';
 
 **具体操作：**
 
-- 撤销user1用户对test操作的权限
+撤销user1用户对test操作的权限
 
-  ```mysql
-  REVOKE ALL ON test.* FROM 'user1'@'localhost';
-  ```
+```mysql
+REVOKE ALL ON test.* FROM 'user1'@'localhost';
+```
 
 ## 13.4 查看权限
 
@@ -1654,11 +1626,11 @@ SHOW GRANTS FOR '用户名'@'主机名';
 
 **具体操作：**
 
-- 查看user1用户的权限
+查看user1用户的权限
 
-  ```mysql
-  SHOW GRANTS FOR 'user1'@'localhost';
-  ```
+```mysql
+SHOW GRANTS FOR 'user1'@'localhost';
+```
 
 ## 13.5 删除用户
 
@@ -1668,11 +1640,11 @@ DROP USER '用户名'@'主机名';
 
 **具体操作：**
 
-- 删除user2
+删除user2
 
-  ```mysql
-   DROP USER 'user2'@'%';
-  ```
+```mysql
+ DROP USER 'user2'@'%';
+```
 
 ```mysql
 /*
@@ -2147,7 +2119,7 @@ sudo apt autoclean
 ### 16.2.2.查看系统版本(可以跳过)
 
 ```shell
-atguigu@ubuntu-1:~$ lsb_release -a
+lining@ubuntu-1:~$ lsb_release -a
 ```
 
 ### 16.2.3.安装rz上传工具(可以跳过)
@@ -2162,7 +2134,7 @@ sudo apt install lrzsz
 cd /opt
 
 sudo mkdir software  #安装软件的路径
-sudo chown -R atguigu:atguigu software/
+sudo chown -R lining:lining software/
 
 cd software
 
