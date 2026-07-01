@@ -647,3 +647,427 @@ print(model.invoke("什么是LangChain，100字以内回答").content)
 ```
 
 > 如果使用 init_chat_model 的方式接入则不需要安装 ollama 、langchain-ollama
+
+# 8.Prompt提示词
+
+## 8.1.基本介绍
+
+```python
+Prompt 指的是你发给大模型的全部输入内容，是 AI 唯一能看懂的指令 / 对话内容。
+
+不管是一句文字、还是一堆角色消息组合，只要是丢给 model.invoke() 的输入，全都叫 Prompt。
+```
+
+## 8.2.Prompt演化历程
+
+```python
+1.Prompt 的 3 个进化阶段：纯字符串 Prompt -> 带占位符的 PromptTemplate -> 多角色消息 Prompt
+
+2.第一代：纯字符串 Prompt（最简单）
+  直接写一段话发给 AI，没有变量、没有角色。
+    
+  # 引号里这一整段，就是一个完整 Prompt
+  res = model.invoke("用100字讲清楚什么是LangChain")
+    
+3.第二代：带占位符的 PromptTemplate（模板，半成品）
+  模板里写 {变量} 留空，运行时填内容，模板本身不是 Prompt。
+  模板半成品：你是{职业}，讲解{知识点}
+  填充变量后 → 生成完整 Prompt（成品）：你是编程老师，讲解LangChain
+  流程：模板填充变量 → 产出 Prompt → 调用模型
+
+4.第三代：多角色消息 Prompt（聊天专用）
+  不再只用一段文字，分成不同身份消息拼在一起，整体组合叫 Prompt。
+    
+  # 整个列表合在一起，才是完整对话Prompt
+  prompt = [
+    SystemMessage("你是Python讲师，回答简短"),
+    HumanMessage("什么是Prompt？")
+  ]
+  model.invoke(prompt)
+```
+
+> 多角色消息 Prompt 分为 4 种角色消息
+>
+> 1. `SystemMessage` 系统消息：给 AI 定身份、规矩
+> 2. `HumanMessage` 用户消息：我们人的提问
+> 3. `AIMessage` AI 消息：上一轮 AI 回答的内容
+> 4. `ToolMessage` 工具消息：调用函数后返回的结果
+
+# 9.模型调用方法
+
+```python
+模型调用方法是把写好的 Prompt 发给本地大模型，拿到 AI 回答的函数，分为普通调用、流式调用、批处理三大类，每类都有同步、异步两种实现，带前缀 a 代表异步。
+```
+
+## 9.1.普通调用
+
+```
+一次性出完整答案
+```
+
+### 9.1.1.同步普通调用_invoke 
+
+```python
+只发 1 个问题，程序停下等 AI 全部写完，一次性把全文给你。
+
+# 1.导入依赖
+import os
+from langchain.chat_models import init_chat_model
+from langchain.messages import HumanMessage, SystemMessage
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 构建消息列表
+messages = [
+    SystemMessage(content="你是一个法律助手，只回答法律问题，超出范围的统一回答，非法律问题无可奉告"),
+    # HumanMessage(content="简单介绍下广告法，一句话告知50字以内")
+    HumanMessage(content="2+3等于几?")
+]
+
+# 3.调用模型
+response = model.invoke(messages)
+print(f"响应类型：{type(response)}")
+# 打印结果
+print(response.content)
+print(response.content_blocks)
+```
+
+### 9.1.2.异步普通调用_ainvoke 
+
+```python
+发 1 个问题，程序不用等着，可以同时干别的，适合网站接口。
+
+# 1.导入依赖
+import os
+from langchain.chat_models import init_chat_model
+import asyncio
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen3.7-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+
+async def main():
+    # 异步调用一条请求
+    response = await model.ainvoke("解释一下LangChain是什么，简洁回答100字以内")
+    print(f"响应类型：{type(response)}")
+    print(response.content_blocks)
+
+
+# 4.运行异步函数
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## 9.2.流式调用
+
+```
+打字机效果，一字一字蹦出来
+```
+
+### 9.2.1.同步流式调用_stream 
+
+```python
+AI 写一点，立刻返回一点，不用等全部写完，聊天框实时展示。
+
+# 1.导入依赖
+import os
+from langchain.chat_models import init_chat_model
+from langchain.messages import HumanMessage, SystemMessage
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 构建消息列表
+messages = [
+    SystemMessage(content="你叫小问，是一个乐于助人的AI人工助手"),
+    HumanMessage(content="你是谁")
+]
+
+# 3.流式调用大模型
+response = model.stream(messages)
+print(f"响应类型：{type(response)}")  # 响应类型：<class 'generator'>
+# 流式打印结果
+for chunk in response:
+    # 刷新缓冲区 (无换行符，缓冲区未刷新，内容可能不会立即显示)
+    print(chunk.content, end="", flush=True)
+print("\n")
+```
+
+### 9.2.2.异步流式调用_astream 
+
+```python
+一边逐字输出，一边不阻塞程序，做网页聊天后端用。
+
+# 1.导入依赖
+import os
+import asyncio
+from langchain.chat_models import init_chat_model
+from langchain.messages import HumanMessage, SystemMessage
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 构建消息列表
+messages = [
+    SystemMessage(content="你叫小问，是一个乐于助人的AI人工助手"),
+    HumanMessage(content="你是谁")
+]
+
+
+# 3.异步流式调用大模型（定义异步函数）
+async def async_stream_call():
+    # astream 返回异步生成器，无需 await 修饰，直接赋值
+    response = model.astream(messages)
+    print(f"响应类型：{type(response)}")  # 响应类型：<class 'async_generator'>
+
+    # 异步遍历异步生成器（必须使用 async for，不可用普通 for）
+    async for chunk in response:
+        # 刷新缓冲区，实现流式打印（无换行、即时输出）
+        print(chunk.content, end="", flush=True)
+    print("\n")
+
+
+# 4.运行异步函数
+if __name__ == "__main__":
+    asyncio.run(async_stream_call())
+```
+
+## 9.3.批处理调用
+
+```
+一次性批量问好多个问题
+```
+
+### 9.3.1.同步批处理调用_batch 
+
+```python
+一次性丢一堆问题给 AI，批量一起算，适合批量文案、批量总结。
+
+# 1.导入依赖
+import os
+from langchain.chat_models import init_chat_model
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 问题列表
+questions = [
+    "什么是redis?简洁回答，字数控制在100以内",
+    "Python的生成器是做什么的？简洁回答，字数控制在100以内",
+    "解释一下Docker和Kubernetes的关系?简洁回答，字数控制在100以内"
+]
+
+# 批量调用大模型 model.batch()
+response = model.batch(questions)
+print(f"响应类型：{type(response)}")
+print()
+for q, r in zip(questions, response):
+    print(f"问题：{q}\n回答：{r.content}\n")
+```
+
+### 9.3.2.异步批处理调用_abatch 
+
+```python
+批量提问 + 不阻塞程序，大批量数据处理用。
+
+# 1.导入依赖
+import os
+import asyncio
+from langchain.chat_models import init_chat_model
+
+# 2.实例化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+questions = [
+    "什么是redis?简洁回答，字数控制在100以内",
+    "Python的生成器是做什么的？简洁回答，字数控制在100以内",
+    "解释一下Docker和Kubernetes的关系?简洁回答，字数控制在100以内"
+]
+
+
+# 3.异步批量调用大模型
+async def async_batch_call():
+    # 调用 model.abatch() 异步批量处理请求，需用 await 修饰
+    response = await model.abatch(questions)
+    print(f"响应类型：{type(response)}")
+
+    # 遍历结果并格式化输出（与原来的同步版本格式一致）
+    for q, r in zip(questions, response):
+        print(f"问题：{q}\n回答：{r.content}\n")
+
+
+# 4.运行异步函数
+if __name__ == "__main__":
+    asyncio.run(async_batch_call())
+```
+
+# 10.PromptTemplate 提示词模板
+
+## 10.1.基本介绍
+
+```python
+1.概述：带 {变量名} 占位符的文本模板，属于半成品提示词，不能直接发给大模型调用
+
+2.作用：一套固定话术重复复用，只替换里面动态内容，不用每次手写完整 Prompt
+
+3.和 Prompt 区别：
+  a.PromptTemplate：带{变量}，半成品，不可直接 model.invoke()
+  b.填充完变量、无占位符的完整文本，成品，可直接丢给模型
+```
+
+## 10.2.文本提示词模板_PromptTemplate
+
+```python
+单轮纯文字提示词模板，里面用{变量}占位，是半成品，不能直接丢给模型。
+填充变量后生成完整 Prompt（成品），才能调用模型。
+```
+
+### 10.2.1.使用构造方法创建
+
+```python
+import os
+
+from langchain.chat_models import init_chat_model
+from langchain_core.prompts import PromptTemplate
+
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+template = PromptTemplate(
+    template="你是一个专业的{role}工程师，请回答我的问题给出回答，我的问题是：{question}",
+    input_variables=['role', 'question']
+)
+
+prompt = template.format(role="python开发", question="冒泡排序怎么写,只要代码其它不要，简洁")
+print(prompt) 
+
+result = model.invoke(prompt)
+print(result.content)
+```
+
+### 10.2.2.使用 from_template 静态方法创建
+
+```python
+import os
+from langchain.chat_models import init_chat_model
+from langchain_core.prompts import PromptTemplate
+
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+template = PromptTemplate.from_template("你是一个专业的{role}工程师，请回答我的问题给出回答，"
+                                        "我的问题是：{question}")
+
+prompt = template.format(role="python开发", question="快速排序怎么写？")
+print(prompt)
+
+result = model.invoke(prompt)
+print(result.content)
+```
+
+## 10.3.对话提示词模板_ChatPromptTemplate
+
+```python
+ChatPromptTemplate 专门做多轮角色对话，可以分开定义系统、用户、AI 消息，对应之前学的 SystemMessage、HumanMessage、AIMessage。
+```
+
+### 10.3.1.使用使用构造方法创建
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+import os
+from langchain.chat_models import init_chat_model
+
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# tuple 构成的列表，格式为[(role, content)]
+chatPromptTemplate = ChatPromptTemplate(
+    [
+        ("system", "你是一个AI开发工程师，你的名字是{name}。"),
+        ("human", "你能帮我做什么?"),
+        ("ai", "我能开发很多{thing}。"),
+        ("human", "{user_input}"),
+    ]
+)
+
+prompt = chatPromptTemplate.format_messages(
+    name="小狸AI", thing="AI", user_input="7 + 5等于多少"
+    )
+print(prompt)
+
+result = model.invoke(prompt)
+print(result.content)
+```
+
+### 10.3.2.使用 from_messages 静态方法创建
+
+```python
+import os
+from langchain.chat_models import init_chat_model
+from langchain_core.prompts import ChatPromptTemplate
+
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+chat_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "你是一个{role}，请回答我提出的问题"),
+        ("human", "请回答:{question}")
+    ]
+)
+
+prompt_value = chat_prompt.format_messages(role="老师", question="你的职业和特长")
+print(prompt_value)
+
+result = model.invoke(prompt_value)
+print(result.content)
+```
+
