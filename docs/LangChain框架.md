@@ -1605,3 +1605,206 @@ print(handle_text.invoke("你好LCEL"))
 # 输出：处理后的文本：你好LCEL
 ```
 
+# 14.向量化和向量数据库
+
+## 14.1.向量化及存储
+
+```python
+1.向量(Vector):
+  a.数学叫向量，物理叫矢量，是有大小、有方向的有序数字数组
+  b.二维：(x,y)；三维：(x,y,z)；AI 文本用几百上千维高维向量
+    
+2.向量化(Embedding 嵌入): 用嵌入模型，把文字、图片、视频、音频等转换成高维数字向量的过程
+  文本 → 嵌入模型 → 多维数字数组（向量）
+  例：小狗爱吃骨头 → [0.11, -0.23, 0.45……]
+
+3.为什么要向量化
+  a.机器只能处理数字，看不懂文字、图片、视频、音频等
+  b.转成向量后，能通过数字距离判断内容语义相似度
+  c.实现语义检索，不靠关键词，按含义匹配内容
+
+4.向量化存储: 先将文本、图片等数据向量化，再把原始内容和对应向量持久存入专用向量数据库
+```
+
+![image-20260702162936.png](../image/image-20260702162936.png)
+
+## 14.2.向量数据库
+
+```python
+1.向量数据库是一种专门用于存储、管理和检索向量数据（即高维数值数组）的数据库系统
+
+2.其核心功能是通过高效的索引结构和相似性计算算法，支持大规模向量数据的快速查询与分析，向量数据库维度越高，查询精准度也越高，查询效果也越好
+
+3.向量数据库将文本、图片、视频转为数字向量存储，不同于传统数据库精准匹配，它做相似度搜索，能返回语义、内容相似的结果
+
+4.下面是常用的向量数据库：
+```
+
+| 向量数据库    | 描述                                                         |
+| ------------- | ------------------------------------------------------------ |
+| FAISS         | 用于高效相似性搜索和密集向量聚类的工具库                     |
+| Chroma        | 开源轻量级向量数据库，API 简洁易用                           |
+| Milvus        | 开源云原生向量专用数据库；性能强、功能全，适配原型开发至十亿级向量生产场景 |
+| Pgvector      | PostgreSQL 开源扩展，给关系库新增向量类型与相似度检索能力    |
+| Redis         | 开源内存数据库，原生支持向量相似度搜索                       |
+| Elasticsearch | 分布式检索引擎，统一管理结构化、非结构化、向量数据           |
+
+## 14.3.文本向量化使用
+
+### 14.3.1.原生 OpenAI SDK 兼容写法
+
+```python
+# 官网：https://bailian.console.aliyun.com/cn-beijing/?productCode=p_efm&tab=doc#/doc/?type=model&url=2842587
+
+import os
+from openai import OpenAI
+
+input_text = "衣服的质量杠杠的"
+
+client = OpenAI(
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+completion = client.embeddings.create(
+    model="text-embedding-v4",
+    input=input_text
+)
+
+print(completion.model_dump_json())
+```
+
+> OpenAI 原生 client 兼容写法（from openai import OpenAI）：通用 API 标准，阿里、智谱、DeepSeek 等多家厂商通用，切换平台仅修改密钥与接口地址，无框架依赖（方法不用记，去官网直接复制粘贴就行）
+
+![image-20260702193438.png](../image/image-20260702193438.png)
+
+### 14.3.2.LangChain 通用兼容写法
+
+```python
+import os
+from langchain_openai import OpenAIEmbeddings
+
+# 阿里云通义向量兼容OpenAI配置
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-v4",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    # 关闭长度校验，适配阿里云向量接口规则
+    check_embedding_ctx_length=False
+)
+
+# 单文本向量化
+text = "This is a test document."
+query_result = embeddings.embed_query(text)
+print("文本向量长度：", len(query_result), sep='')
+
+# 批量文档向量化
+doc_list = [
+    "Hi there!",
+    "Oh, hello!",
+    "What's your name?",
+    "My friends call me World",
+    "Hello World!"
+]
+doc_results = embeddings.embed_documents(doc_list)
+
+print(doc_results)
+print("文本向量数量：", len(doc_results), "，文本向量长度：", len(doc_results[0]), sep='')
+```
+
+> `OpenAIEmbeddings`：LangChain 框架下的 OpenAI 兼容封装类，同样适配全平台兼容接口，内置embed_query/embed_documents，可直接对接向量库开发 RAG。（方法不用记，可以去官网直接复制）
+
+### 14.3.3.DashScope 原生 SDK 写法
+
+```python
+# https://bailian.console.aliyun.com/cn-beijing/?productCode=p_efm&tab=doc#/doc/?type=model&url=2842587
+import os
+
+import dashscope
+from http import HTTPStatus
+
+input_text = "衣服的质量杠杠的"
+dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")  # 从环境变量读取
+
+resp = dashscope.TextEmbedding.call(
+    model="text-embedding-v4",
+    input=input_text,
+)
+
+if resp.status_code == HTTPStatus.OK:
+    print(resp)
+```
+
+> `dashscope.TextEmbedding.call`：阿里原生 SDK，纯底层接口调用，适合简单测试、精细自定义调参，仅支持阿里百炼模型（方法不用记，去官网直接复制粘贴就行）
+
+### 14.3.4.LangChain 阿里专属封装写法
+
+```python
+# https://bailian.console.aliyun.com/cn-beijing/?tab=api#/api/?type=model&url=2587654
+# pip install langchain-community dashscope
+
+import os
+from langchain_community.embeddings import DashScopeEmbeddings
+
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v4",
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")
+)
+
+text = "This is a test document."
+
+query_result = embeddings.embed_query(text)
+print("文本向量长度：", len(query_result), sep='')
+
+doc_results = embeddings.embed_documents(
+    [
+        "Hi there!",
+        "Oh, hello!",
+        "What's your name?",
+        "My friends call me World",
+        "Hello World!"
+    ])
+print(doc_results)
+print("文本向量数量：", len(doc_results), "，文本向量长度：", len(doc_results[0]), sep='')
+```
+
+> `DashScopeEmbeddings`：LangChain 为阿里单独封装的专用嵌入类，AI 知识库、RAG 向量检索开发首选，深度适配阿里模型专属能力。（方法不用记，去官网直接复制粘贴就行）
+
+# 15.RedisStack数据库
+
+## 15.1.基本介绍
+
+```python
+1.Redis Stack 是 Redis 官方推出的一个“增强版 Redis”，它不是 Redis 的替代品，而是在原生 Redis 基础上的功能扩展包，专为构建现代实时应用而设计
+
+2.官方地址：https://docs.langchain.com/oss/python/integrations/vectorstores/redis
+
+3.Redis Stack 核心组件:
+  a.RediSearch：提供全文搜索能力，支持复杂的文本搜索、聚合和过滤，以及向量数据的存储和检索
+  b.RedisJSON：原生支持JSON数据的存储、索引I和查询，可高效存储和操作嵌套的JSON文档
+  c.RedisGraph：支持图数据模型，使用Cypher查询语言进行图遍历查询
+  d.RedisBloom:支持 Bloom、Cuckoo、Count-Min Sketch等概率数据结构
+
+4.RedisStack = 原生Redis + 搜索 + 图 + 时间序列 + JSON + 概率结构 + 可视化工具 + 开发框架支持
+
+5.原生 Redis vs Redis Stack 对比:
+```
+
+| 功能维度     | 原生 Redis                 | Redis Stack 增强功能                                  |
+| ------------ | -------------------------- | ----------------------------------------------------- |
+| **数据结构** | 字符串、列表、集合、哈希等 | 增加 JSON、图、时间序列、概率结构等高级类型           |
+| **查询能力** | 仅限键值查询               | 支持全文搜索、向量搜索、图查询、JSON 查询             |
+| **使用场景** | 缓存、消息队列、计数器等   | 实时推荐、时序分析、知识图谱、文档数据库、AI 向量检索 |
+| **开发体验** | 命令行操作，需手动拼装逻辑 | 提供 RedisInsight 和对象映射库，开发效率更高          |
+
+## 15.2.RedisStack安装
+
+```shell
+1.说明：本次 Redis Stack 是基于 Docker Desktop 安装部署的
+
+2.安装步骤：
+  a.打开 Windows PowerShell / CMD 终端
+  b.执行指令: docker run -d --name redis-stack-server -p 6379:6379 redis/redis-stack-server
+  c.查看是否安装成功: docker ps
+```
+
