@@ -1071,3 +1071,537 @@ result = model.invoke(prompt_value)
 print(result.content)
 ```
 
+## 10.4.外部加载Prompt
+
+```python
+可以将 prompt 保存为 JSON 或者 YAML 等格式的文件，通过读取指定路径的格式化文件，获取相应的 prompt。这样方便对 prompt 进行管理和维护
+```
+
+### 10.4.1.外部加载_JSON
+
+创建 prompt.json 文件
+
+```
+{
+    "_type": "prompt",
+    "input_variables": ["name", "what"],
+    "template": "请{name}讲一个{what}的故事"
+}
+```
+
+创建 PromptLoadByJson.py 文件
+
+```python
+import json
+from langchain_core.prompts import PromptTemplate
+
+# 读取prompt配置
+with open("prompt.json", "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+# 手动实例化PromptTemplate，完全规避beta序列化接口
+template = PromptTemplate(
+    input_variables=data["input_variables"],
+    template=data["template"]
+)
+
+res = template.format(name="张三", what="搞笑的")
+print(res)
+```
+
+### 10.4.2.外部加载_YAML
+
+创建 prompt.yaml 文件
+
+```yaml
+_type: "prompt"
+input_variables: ["name", "what"]
+template: "请{name}讲一个{what}的故事"
+
+# 提示词模板类型，团队统一模板文件规范：一律带上 _type，兼容所有加载方式，避免后期切换接口出问题。
+#_type: prompt
+## 动态变量列表
+#input_variables:
+#  - name
+#  - what
+## 提示词正文
+#template: "请{name}讲一个{what}的故事"
+```
+
+创建 PromptLoadByYaml.py 文件
+
+```python
+from langchain_core.prompts import load_prompt
+
+template = load_prompt("prompt.yaml", encoding="utf-8")
+print(template.format(name="年轻人", what="滑稽"))
+# 请年轻人讲一个滑稽的故事
+
+#
+# import yaml
+# from langchain_core.prompts import PromptTemplate
+#
+# # 读取yaml文件，指定utf-8编码
+# with open("prompt.yaml", "r", encoding="utf-8") as f:
+#     prompt_config = yaml.safe_load(f)
+#
+# # 手动实例化标准PromptTemplate对象，彻底规避不稳定序列化接口
+# prompt_template = PromptTemplate(
+#     input_variables=prompt_config["input_variables"],
+#     template=prompt_config["template"]
+# )
+# # 填充变量并打印结果
+# result = prompt_template.format(name="年轻人", what="滑稽")
+# print(result)
+#
+```
+
+# 11.Parser输出解析器
+
+## 11.1.基本介绍
+
+```python
+1.介绍：输出解析器 Parser 专门处理大模型返回的内容，解决 AI 输出文本杂乱、程序无法直接读取数据的问题的 LangChain 的配套工具
+
+2.输出解析器 = 规定 AI 输出格式 + 将 AI 文本转为程序可直接读取的数据
+
+3.两大核心功能：
+  a.约束 AI 输出格式
+    通过 get_format_instructions() 生成格式规则，嵌入提示词，告诉模型必须按照指定规范（JSON / 逗号列表等）返回内容
+    
+  b.文本转结构化数据
+    通过 parse() 方法，把 AI 返回的纯文字自动转换成 Python 能直接使用的数据：字符串、字典、列表
+    
+```
+
+## 11.2.输出解析器分类
+
+| 解析器类型            | 核心作用                 | 输出类型          | 适用场景                       |
+| --------------------- | ------------------------ | ----------------- | ------------------------------ |
+| StrOutputParser       | 提取模型纯文本回答       | 字符串            | 仅需要自由文字，无结构化需求   |
+| JsonOutputParserr     | 解析标准 JSON 文本       | 字典              | 多字段结构化数据，日常开发首选 |
+| PydanticOutputParserr | 基于实体模型，带类型校验 | 字典 / 实体对象   | 对字段、数据类型有严格规范要求 |
+| ListOutputParser      | 拆分文本为数组列表       | Python 列表       | 获取多条关键词、条目           |
+| DatetimeOutputParser  | 解析日期时间文本         | 时间对象          | 需要提取标准时间格式数据       |
+| BooleanOutputParser   | 识别真假类回答           | 布尔值 True/False | 是非判断、选择题结果提取       |
+
+## 11.3.输出解析器两大方法
+
+### 11.3.1.parse
+
+```python
+# 写法A（手动调用parse）
+response = parser.parse(result.content)
+
+# 写法B（invoke自动封装parse，和写法A效果一模一样）
+response = parser.invoke(result)
+```
+
+### 11.3.2.get_format_instructions
+
+```python
+# 方式1：format 动态拼接
+prompt = PromptTemplate.from_template("回答问题：{q}\n{format_tip}")
+prompt_val = prompt.format(
+    q="秦始皇功绩",
+    format_tip=parser.get_format_instructions()
+)
+
+#===============================================
+
+# 方式2：partial_variables 提前注入模板（推荐）
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, Field
+
+# 1. 定义输出结构
+class Info(BaseModel):
+    name: str
+    desc: str
+
+# 2. 初始化解析器
+parser = JsonOutputParser(pydantic_object=Info)
+
+# 3. get_format_instructions() 获取格式规则，partial_variables注入
+prompt = PromptTemplate(
+    template="回答问题：{q}\n输出要求：{format_tip}",
+    input_variables=["q"],
+    partial_variables={"format_tip": parser.get_format_instructions()}
+)
+```
+
+## 11.4.常用输出解析器用法
+
+### 11.4.1.字符串解析器_StrOutputParser
+
+```python
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+import os
+from langchain.chat_models import init_chat_model
+from loguru import logger
+
+# 创建聊天提示模板，包含系统角色设定和用户问题输入
+chat_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "你是一个{role}，请简短回答我提出的问题"),
+        ("human", "请回答:{question}")
+    ]
+)
+
+# 使用指定的角色和问题生成具体的提示内容
+prompt = chat_prompt.invoke({"role": "AI助手", "question": "什么是LangChain，简洁回答100字以内"})
+logger.info(prompt)
+
+# 初始化聊天模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 调用模型获取回答结果
+result = model.invoke(prompt)
+logger.info(f"模型原始输出:\n{result}")
+# 创建字符串输出解析器，用于解析模型返回的结果
+parser = StrOutputParser()
+
+# 打印解析后的结构化结果
+response = parser.invoke(result)
+logger.info(f"解析后的结构化结果:\n{response}")
+logger.info("\n")
+# 打印类型
+logger.info(f"结果类型: {type(response)}")
+```
+
+### 11.4.2.Json解析器_JsonOutputParser
+
+#### 11.4.2.1.用法1
+
+```python
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+import os
+from langchain.chat_models import init_chat_model
+from loguru import logger
+
+# 创建聊天提示模板，包含系统角色设定和用户问题输入
+chat_prompt = ChatPromptTemplate.from_messages([
+    ("system", "你是一个{role}，请简短回答我提出的问题，结果返回json格式，q字段表示问题，a字段表示答案。"),
+    ("human", "请回答:{question}")
+])
+
+# 使用指定的角色和问题生成具体的提示内容
+prompt = chat_prompt.invoke({"role": "AI助手", "question": "什么是LangChain，简洁回答100字以内"})
+logger.info(prompt)
+
+print()
+
+# 初始化模型
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 调用模型获取回答结果
+result = model.invoke(prompt)
+logger.info(f"大模型原始输出，直接返回的原始素材:\n{result}")
+print()
+print("*" * 60)
+
+# 创建JSON输出解析器实例
+parser = JsonOutputParser()
+# 调用解析器处理结果数据，将输入转换为JSON格式的响应
+response = parser.invoke(result)
+
+print()
+logger.info(f"JsonOutputParser解析后的结构化结果:\n{response}")
+logger.info("\n")
+# 打印类型
+logger.info(f"结果类型: {type(response)}")  # <class 'dict'>
+```
+
+#### 11.4.2.2.用法2
+
+```python
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+import os
+from langchain.chat_models import init_chat_model
+from loguru import logger
+from pydantic import BaseModel, Field
+
+class Person(BaseModel):
+    """
+    定义一个新闻结构化的数据模型类
+    属性:
+        time (str): 新闻发生的时间
+        person (str): 新闻涉及的人物
+        event (str): 发生的具体事件
+    """
+    time: str = Field(description="时间") #
+    person: str = Field(description="人物")
+    event: str = Field(description="事件")
+
+# 创建JSON输出解析器，用于将model输出解析为Person对象
+parser = JsonOutputParser(pydantic_object=Person)
+
+# 获取格式化指令，告诉model如何输出符合要求的JSON格式
+format_instructions = parser.get_format_instructions()
+
+# 创建聊天提示模板，定义系统角色和用户输入格式
+chat_prompt = ChatPromptTemplate.from_messages([
+    ("system", "你是一个AI助手，你只能输出结构化JSON数据。"),
+    ("human", "请生成一个关于{topic}的新闻。{format_instructions}")
+])
+
+# 格式化提示词，填入具体主题和格式化指令
+prompt = chat_prompt.format_messages(
+    topic="小米su7跑车", format_instructions=format_instructions)
+
+# 记录格式化后的提示词信息
+logger.info(prompt)
+
+
+# 初始化大语言模型实例
+model = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("aliQwen-api"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# # 调用大语言模型获取响应结果
+result = model.invoke(prompt)
+
+# 记录模型返回的结果
+logger.info(f"模型原始输出:\n{result}")
+
+# 使用解析器将模型输出解析为结构化数据
+response = parser.invoke(result)
+logger.info(f"解析后的结构化结果:\n{response}")
+
+# 打印类型
+logger.info(f"结果类型: {type(response)}")
+```
+
+# 12.TypedDict类型注解工具
+
+## 12.1.基本介绍
+
+```python
+1.作用:
+  a.给字典结构做类型标注，限定字典有哪些 key、每个 key 是什么类型
+  b.配合 Annotated 给字段加文字说明，供大模型结构化输出识别
+  c.轻量化，只做静态提示，无运行时数据校验（区别 Pydantic BaseModel）
+
+2.导入：from typing import TypedDict, Annotated
+
+3.基础语法:
+    
+  # 定义字典结构
+  class Student1(TypedDict):
+    name: str,
+    age: int   
+
+  # Annotated[类型, "字段描述"]：替代 Pydantic Field，给模型看注释
+  class Student2(TypedDict):
+    name: Annotated[str, "学生姓名"]
+    age: Annotated[int, "学生年龄"]     
+```
+
+## 12.2.TypedDict VS BaseModel
+
+| 对比项   | TypedDict                 | BaseModel                                |
+| -------- | ------------------------- | ---------------------------------------- |
+| 运行校验 | 无                        | 有（类型、长度、默认值）                 |
+| 字段注释 | `Annotated[str, "说明"]`  | `Field(description="说明")`              |
+| 返回结果 | 普通 dict                 | Pydantic 对象，需 `.model_dump()` 转字典 |
+| 体积     | 轻量，仅类型提示          | 功能完整，较重                           |
+| 适用场景 | 简单 JSON、快速结构化输出 | 正式业务、需要严格数据校验               |
+
+## 12.3.使用案例
+
+```python
+import os
+from typing import TypedDict, Annotated
+from langchain.chat_models import init_chat_model
+
+llm = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+class Animal(TypedDict):
+    animal: Annotated[str, "动物"]
+    emoji: Annotated[str, "表情"]
+
+class AnimalList(TypedDict):
+    animals: Annotated[list[Animal], "动物与表情列表"] # List<Animal>
+
+messages = [
+    {"role": "user",
+     "content": "任意生成三种动物，以及他们的 emoji 表情"}
+]
+
+llm_with_structured_output = llm.with_structured_output(AnimalList)
+resp = llm_with_structured_output.invoke(messages)
+print(resp)
+
+```
+
+# 13.LCEL链式调用
+
+## 13.1.Runnable
+
+```python
+1.介绍：Runnable 是一套统一标准接口，让提示词、模型、解析器、自定义函数拥有一模一样的调用能力，支撑 LCEL | 管道链式编程。
+
+2.没有 Runnable 之前的痛点（各组件调用方法混乱）
+  a.提示模板：.format() / .format_messages() 渲染占位符
+  b.大模型：.invoke() 发起请求
+  c.输出解析器：.parse() 提取、转换文本
+  d.工具：.run() 执行工具逻辑
+
+  # 传统写法（每个步骤写法不一样，参数格式不互通，复杂链路写大量临时变量。）
+  # 1. 手动渲染提示词
+  prompt_msg = prompt.format_messages({"topic": "AI"})
+  # 2. 把渲染后的消息传给模型
+  llm_out = model.invoke(prompt_msg)
+  # 3. 手动取出content，再丢给parse
+  result = parser.parse(llm_out.content)
+    
+3.Runnable 核心解决方案(标准化统一接口)
+
+  LangChain 给所有组件（模板、模型、解析器、完整链条、自定义函数）强制实现一套完全相同的方法集合：
+  invoke / stream / batch / ainvoke / astream / abatch
+
+  # 使用 Runnable （不管你手里是提示词、模型、解析器还是整条链，调用语法完全一致）
+  # 提示模板（Runnable）
+  prompt.invoke({"topic": "AI"})
+  # 大模型（Runnable）
+  model.invoke(prompt_value)
+  # 解析器（Runnable）
+  parser.invoke(ai_message)
+  # 拼接后的完整链路（依然是Runnable）
+  chain.invoke({"question": "你好"})
+```
+
+## 13.2.LCEL
+
+```python
+1.LCEL 全称 LangChain Expression Language , LangChain 表达式语言
+
+2.LCEL 就是用 | 管道拼接所有 Runnable，一行代码组装完整大模型业务流程，统一调用、简化代码的表达式。
+
+3.管道 | 运行规则（A | B）
+  a.先执行 A.invoke(输入)，拿到 A 的输出
+  b.自动把 A 的输出作为入参，传给 B.invoke()
+  c.拼接后的整体是 RunnableSequence，依然属于 Runnable，支持无限继续拼接、复用
+
+4.解决什么痛点
+  不用分步写一堆临时变量、手动传递中间结果，把多步流程声明式写成一条链
+
+  # 老式分步写法（手动处理中间变量，代码繁琐）
+  prompt_out = prompt.invoke({"topic": "编程"})
+  model_out = model.invoke(prompt_out)
+  result = output_parser.invoke(model_out)
+
+  # LCEL 写法（统一调用、简化代码）
+  # 三个全是 Runnable，管道串联
+  chain = prompt | model | output_parser
+  # 整条链也是 Runnable，统一用 invoke 执行
+  result = chain.invoke({"topic": "编程"})
+```
+
+## 13.3.链式调用基础用法
+
+```
+langchain_core.runnables 下以 RunnableXXX 开头、官方稳定生产可用共 15 个，全部实现 Runnable 接口，支撑 LCEL 链式编程。
+```
+
+| 分类           | 类名                  | 核心功能简述                                 |
+| -------------- | --------------------- | -------------------------------------------- |
+| LCEL 高频核心  | RunnableSequence      | 生成串行链，按顺序执行，前一段输出传给后一段 |
+| LCEL 高频核心  | RunnableBranch        | 条件分支，根据输入分流不同子链               |
+| LCEL 高频核心  | RunnableParallel      | 并行执行多分支，同时返回多组字典结果         |
+| LCEL 高频核心  | RunnableLambda        | 封装普通函数，实现自定义数据处理             |
+| LCEL 高频核心  | RunnablePassthrough   | 透传输入，可扩展字典字段、保留上下文         |
+| 字典操作工具   | RunnableAssign        | 给字典新增字段                               |
+| 字典操作工具   | RunnablePick          | 仅提取字典指定 key，过滤多余字段             |
+| 生产稳定性工具 | RunnableRetry         | 链路异常自动重试                             |
+| 生产稳定性工具 | RunnableWithFallbacks | 主链路失败，自动切换兜底备用链               |
+| 生产稳定性工具 | RunnableBinding       | 为下游绑定固定参数、全局配置                 |
+| 生产稳定性工具 | RunnableEach          | 遍历数组，逐个执行子链                       |
+| 高级拓展工具   | RunnableRouter        | 多分类复杂路由分发                           |
+| 高级拓展工具   | RunnableConfig        | 承载链路全局配置（超时、追踪等）             |
+| 高级拓展工具   | RunnableStream        | 统一管理流式分段输出                         |
+
+### 13.3.1.顺序链_RunnableSequence
+
+```python
+管道A | B | C自动生成，串行依次执行，上一步输出传给下一步
+
+from langchain_core.runnables import RunnableLambda
+
+# 自定义函数
+add1 = RunnableLambda(lambda x: x + 1)
+mul2 = RunnableLambda(lambda x: x * 2)
+
+# 顺序链
+seq_chain = add1 | mul2
+print(seq_chain.invoke(3)) # (3+1)*2 = 8
+```
+
+### 13.3.2.分支链_RunnableBranch
+
+```python
+条件判断分流，满足不同条件执行不同子链
+
+from langchain_core.runnables import RunnableLambda, RunnableBranch
+
+# 定义分支：条件, 对应执行链
+branch_chain = RunnableBranch(
+    (lambda x: x > 0, RunnableLambda(lambda x: f"正数：{x}")),
+    (lambda x: x < 0, RunnableLambda(lambda x: f"负数：{x}")),
+    # 默认分支
+    RunnableLambda(lambda x: "数字等于0")
+)
+print(branch_chain.invoke(10))  # 正数：10
+print(branch_chain.invoke(-5))  # 负数：-5
+print(branch_chain.invoke(0))   # 数字等于0
+```
+
+### 13.3.3.并行链_RunnableParallel
+
+```python
+多分支同时执行，输入共享，返回包含所有分支结果的字典
+
+from langchain_core.runnables import RunnableLambda, RunnableParallel
+
+calc = RunnableParallel({
+    "加1": RunnableLambda(lambda x: x + 1),
+    "乘2": RunnableLambda(lambda x: x * 2)
+})
+print(calc.invoke(5))
+# 输出: {'加1': 6, '乘2': 10}
+```
+
+### 13.3.4.函数链_RunnableLambda
+
+```python
+将普通 Python 函数 / 匿名函数包装成 Runnable，用于链路内数据处理
+
+from langchain_core.runnables import RunnableLambda
+
+# 包装普通函数
+handle_text = RunnableLambda(lambda s: f"处理后的文本：{s}")
+print(handle_text.invoke("你好LCEL"))
+# 输出：处理后的文本：你好LCEL
+```
+
