@@ -1649,7 +1649,7 @@ print(handle_text.invoke("你好LCEL"))
 | Redis         | 开源内存数据库，原生支持向量相似度搜索                       |
 | Elasticsearch | 分布式检索引擎，统一管理结构化、非结构化、向量数据           |
 
-## 14.3.文本向量化使用
+## 14.3.文本向量化案例
 
 ### 14.3.1.原生 OpenAI SDK 兼容写法
 
@@ -1806,5 +1806,402 @@ print("文本向量数量：", len(doc_results), "，文本向量长度：", len
   a.打开 Windows PowerShell / CMD 终端
   b.执行指令: docker run -d --name redis-stack-server -p 6379:6379 redis/redis-stack-server
   c.查看是否安装成功: docker ps
+```
+
+## 15.3.使用案例
+
+### 15.3.1.连接 RedisStack
+
+```python
+# pip install redis==5.3.1
+
+try:
+    # 导入 redis 包
+    import redis
+
+    print("✅ redis 包导入成功！")
+    print(f"✅ redis 包版本：{redis.__version__}")
+except ModuleNotFoundError:
+    print("❌ 未找到 redis 包，请先安装！")
+except Exception as e:
+    print(f"❌ redis 包导入异常：{e}")
+```
+
+### 15.3.2.向量存入与检索
+
+```python
+# pip install langchain-community dashscope redis==5.3.1
+
+import os
+# 阿里云通义向量
+from langchain_community.embeddings import DashScopeEmbeddings
+# Redis向量库
+from langchain_community.vectorstores import Redis
+from langchain_core.documents import Document
+
+# 1. 初始化阿里千问 Embedding 模型
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v3",  # 支持 v1 或 v2
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")  # 从环境变量读取
+)
+
+# 2. 准备要向量化的文本（Document 列表）
+texts = [
+    "通义千问是阿里巴巴研发的大语言模型。",
+    "Redis 是一个分布式内存数据库，也可以作为一种向量数据库。",
+    "LangChain 与其他组件连接成链，可以轻松集成各种大模型借此构建AI工程应用"
+]
+documents = [Document(page_content=text, metadata={"source": "manual"}) for text in texts]
+
+# 3. 连接到 Redis 并存入向量（自动调用 embeddings 嵌入）
+vector_store = Redis.from_documents(
+    documents=documents,
+    embedding=embeddings,
+    redis_url="redis://localhost:6379",  # 替换为你的 Redis 地址
+    index_name="my_index11",  # 向量索引名称
+)
+
+# 4. 将 Redis 向量库转为通用检索器，每次检索固定返回相似度最高 1 条文档，用于 RAG 检索流程。
+retriever = vector_store.as_retriever(search_kwargs={"k": 1})
+
+# 5. 打印
+results = retriever.invoke("LangChain是什么？")
+for res in results:
+    print(res.page_content)
+```
+
+### 15.3.3.向量库增删改查与相似度检索
+
+```python
+# pip install langchain langchain-openai redis==5.3.1 langchain-core dashscope
+
+import os
+from langchain_core.documents import Document
+from langchain_community.embeddings import DashScopeEmbeddings
+from langchain_community.vectorstores import Redis
+
+# 初始化通义千问向量模型
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v3",
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")
+)
+
+# Redis配置常量
+REDIS_URL = "redis://localhost:6379"
+INDEX_NAME = "qwen_vector_index"
+KEY_PREFIX = "qwen_doc:"
+
+# 测试文档，携带完整元数据
+texts = [
+    "通义千问是阿里巴巴研发的大语言模型。",
+    "Redis 是一个高性能的键值存储系统，支持向量检索。",
+    "Milvus	开源的专为向量搜索设计的云原生数据库。性能强悍，功能丰富。覆盖轻量级的原型开发到十亿级向量的大规模生产系统",
+    "LangChain 可以轻松集成各种大模型和向量数据库。"
+]
+documents = [
+    Document(page_content=text, metadata={"source": "manual", "type": "tech"})
+    for text in texts
+]
+
+def create_redis_store() -> Redis:
+    vector_store = Redis.from_documents(
+        documents=documents,
+        embedding=embeddings,
+        redis_url=REDIS_URL,
+        index_name=INDEX_NAME,
+        key_prefix=KEY_PREFIX
+    )
+    print("✅ 文档向量入库新增完成,共计插入文档记录条数：",len(documents))
+    return vector_store
+
+# 基础相似度检索
+def simple_search(store: Redis, query: str, top_k=2):
+    print(f"\n【基础相似检索】查询：{query}")
+    res = store.similarity_search(query, k=top_k)
+    for idx, doc in enumerate(res):
+        print(f"结果{idx+1}: {doc.page_content} | 元数据:{doc.metadata}")
+    return res
+
+# 带相似度分值检索
+def search_with_score(store: Redis, query: str, top_k=2):
+    print(f"\n【带分值检索】查询：{query}")
+    docs_score = store.similarity_search_with_score(query, k=top_k)
+    for doc, score in docs_score:
+        print(f"相似度:{score:.4f} 文本:{doc.page_content}")
+    return docs_score
+
+# 更新文档（先删后新增）
+def update_demo(store: Redis):
+    print("\n【更新文档演示,先删all后新增】")
+    all_ids = store.client.keys(f"{KEY_PREFIX}*")
+    if all_ids:
+        store.delete(ids=all_ids)
+    new_doc = Document(
+        page_content="通义千问3 = qwen3.7-plus,是阿里新一代多模态大模型，支持图文、长文本理解",
+        metadata={"source": "manual", "type": "llm"}
+    )
+    store.add_documents([new_doc])
+    print("✅ 旧数据清空，写入更新文档，本次新增文档数量：1")
+    ret = store.similarity_search("通义千问", k=1)
+    print("更新后查询结果：", ret[0].page_content)
+
+# 清空全部向量文档
+def del_all(store: Redis):
+    all_ids = store.client.keys(f"{KEY_PREFIX}*")
+    if all_ids:
+        store.delete(ids=all_ids)
+        print(f"\n✅ 已删除全部 {len(all_ids)} 条文档")
+
+if __name__ == "__main__":
+
+    redis_vector = create_redis_store()
+
+    simple_search(redis_vector, "什么是大语言模型")
+
+    #search_with_score(redis_vector, "向量数据库有哪些")
+
+    print()
+    print("更新后查询=====================")
+    update_demo(redis_vector)
+    simple_search(redis_vector, "什么是大语言模型")
+    print("更新后查询end=====================")
+
+    del_all(redis_vector)
+
+    empty_res = redis_vector.similarity_search("Redis", k=1)
+    print("\n清空后检索到文档数量：", len(empty_res))
+```
+
+# 16.Milvus数据库
+
+## 16.1.基本介绍
+
+```python
+1.介绍：专业向量数据库，专门用来存海量 Embedding 向量，只做向量相似度检索，不做缓存、普通 KV 存储。
+
+2.官网：https://milvus.io/zh
+
+3.数据模型
+  a.Database(数据库): Milvus 的数据库，用来隔离不同业务数据
+  b.Collection(集合): 等同于 MySQL 数据表，存放同类向量，定义向量维度、字段结构
+  c.Partition(分区): 集合的数据子集，用于分片提速；每个集合自带默认分区，非必手动创建
+  d.Entity(实体): 单条数据记录，包含向量、文本、主键等完整信息
+
+4.Milvus 和 Redis Stack 的区别
+```
+
+| 对比项   | Redis Stack                     | Milvus                          |
+| -------- | ------------------------------- | ------------------------------- |
+| 核心用途 | 缓存 + 轻量向量库，一套服务两用 | 纯向量检索专用数据库            |
+| 数据量级 | 十万级以内向量合适              | 百万 / 千万级海量向量首选       |
+| 存储方式 | 内存为主，持久化为辅            | 磁盘 + 内存混合，支持超大向量库 |
+| 适用项目 | 小型知识库、已有 Redis 的项目   | 企业大型 RAG、海量文档检索系统  |
+
+## 16.2.Milvus安装
+
+```shell
+1.说明：本次 Milvus 是基于 Docker Desktop 安装部署的
+
+2.安装步骤：
+  a.在 D 盘创建 Milvus 文件夹
+  
+  b.进入 Milvus 文件夹以管理员身份打开 PowerShell 终端（不是 CMD ！！！）
+  
+  c.执行指令下载官方安装脚本: Invoke-WebRequest https://raw.githubusercontent.com/milvus-io/milvus/refs/heads/master/scripts/standalone_embed.bat -OutFile standalone.bat
+  
+  d.执行指令启动安装脚本：.\standalone.bat start
+  
+  e.查看是否安装成功：docker ps
+```
+
+![image-20260703143553.png](../image/image-20260703143553.png)
+
+## 16.3.Attu可视化工具安装
+
+```python
+1.Milvus 官方配套可视化工具，完全免费、无兼容问题
+
+2.官网：https://github.com/zilliztech/attu/tags
+
+3.安装步骤：
+  a.进入官网选择下载对应系统和版本（attu-Setup-2.5.5.exe）
+  b.把 attu-Setup-2.5.5.exe 重命名为 attu-Setup-2.5.5.zip 解压到你想安装的位置
+  c.解压完成，进入文件夹找到 attu.exe，双击直接打开就行
+```
+
+## 15.4.使用案例
+
+### 15.4.1.DDL 结构管理
+
+```python
+负责库、表（集合）的结构创建、查看、切换、删除，属于结构定义操作
+
+#  pip install pymilvus
+
+# 导入客户端、连接 Milvus
+from pymilvus import MilvusClient
+
+# 连接本地 Milvus v2.5.5
+client = MilvusClient("http://localhost:19530")
+
+# 1. 查看所有数据库
+db_list = client.list_databases()
+print("所有数据库：", db_list)
+
+# 2. 创建数据库（防重复报错） 
+db_name = "rag_study_demo"
+if db_name not in db_list:
+    client.create_database(db_name)
+    print(f"数据库 {db_name} 创建成功")
+else:
+    print(f"数据库 {db_name} 已存在")
+
+# 3. 切换数据库 
+client.use_database(db_name)
+print(f"已切换至数据库：{db_name}")
+
+# 4. 创建集合 Collection 
+coll_name = "study_info"
+client.create_collection(
+    collection_name=coll_name,
+    dimension=1024,
+    metric_type="COSINE"
+)
+print(f"集合 {coll_name} 创建成功")
+
+# 5. 查看当前库所有集合 
+coll_list = client.list_collections()
+print("当前库所有集合：", coll_list)
+
+# 6. 删除集合 
+client.drop_collection(coll_name)
+print(f"集合 {coll_name} 已删除")
+
+# 7. 删除数据库（需先删集合 
+client.drop_database(db_name)
+print(f"数据库 {db_name} 已删除")
+
+```
+
+### 15.4.2.DML 数据写入
+
+```python
+文本向量化、构造结构化数据、批量 upsert 写入、手动落盘、统计数据量，属于数据写入操作
+
+# pip install pymilvus
+
+from pymilvus import MilvusClient
+from langchain_community.embeddings import DashScopeEmbeddings
+import os
+ 
+# 1. 连接 Milvus
+client = MilvusClient("http://localhost:19530")
+
+# 2. 初始化通义千问嵌入模型
+embed_model = DashScopeEmbeddings(
+    model="text-embedding-v3",
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
+)
+
+# 3. 准备测试文本
+texts = [
+    "LangChain 是一个用于构建 LLM 应用的开发框架。",
+    "Milvus 是一款高性能 AI 向量数据库。",
+    "RAG 检索增强生成是大模型落地核心方案。",
+    "Docker 可快速部署本地 Milvus 向量服务。"
+]
+
+# 4. 文本向量化
+vectors = embed_model.embed_documents(texts)
+print("向量数量：", len(vectors))
+print("向量维度：", len(vectors[0]))
+
+# 5. 封装 Milvus 可插入格式
+data = [
+    {
+        "id": i,
+        "vector": vectors[i],
+        "text": texts[i],
+        "source": "study_demo"
+    }
+    for i in range(len(texts))
+]
+
+# 6. 创建集合并写入数据
+coll_name = "t_info"
+client.create_collection(
+    collection_name=coll_name,
+    dimension=1024,
+    metric_type="COSINE"
+)
+
+# 插入/更新数据
+res = client.upsert(collection_name=coll_name, data=data)
+print("写入结果：", res)
+
+# 7. 手动 flush 落盘（内存数据刷入磁盘）
+client.flush(collection_name=coll_name)
+
+# 8. 查看集合数据统计
+stats = client.get_collection_stats(collection_name=coll_name)
+print("集合数据总量：", stats["row_count"])
+```
+
+### 15.4.3.DQL 数据查询
+
+```python
+全量遍历数据、根据 ID 查询、文本向量相似度检索（RAG 核心）
+
+# pip install pymilvus
+
+from pymilvus import MilvusClient
+from langchain_community.embeddings import DashScopeEmbeddings
+import os
+
+# 1. 连接客户端、加载模型
+client = MilvusClient("http://localhost:19530")
+embed_model = DashScopeEmbeddings(
+    model="text-embedding-v3",
+    dashscope_api_key=os.getenv("aliQwen-api"),
+)
+
+# 2. 全量遍历所有数据
+print("===== 全量数据遍历 =====")
+coll_name = "t_info"
+iterator = client.query_iterator(
+    collection_name=coll_name,
+    filter="",
+    output_fields=["*"]
+)
+idx = 1
+while True:
+    rows = iterator.next()
+    if not rows:
+        break
+    for row in rows:
+        print(f"第{idx}条：id={row['id']}, text={row['text']}")
+        idx += 1
+iterator.close()
+
+# 3. 根据主键 ID 精准查询
+print("\n===== 主键精准查询 =====")
+res = client.get(collection_name=coll_name, ids=[0, 1])
+for item in res:
+    print(item)
+
+# 3. 相似度向量检索（RAG核心）
+print("\n===== 向量相似度检索 =====")
+query = "什么是向量数据库？"
+query_vec = embed_model.embed_query(query)
+
+search_res = client.search(
+    collection_name=coll_name,
+    data=[query_vec],
+    limit=3,
+    output_fields=["text", "source"]
+)
+
+for item in search_res[0]:
+    print(f"相似度分数：{item['distance']:.4f} | 内容：{item['entity']['text']}")
 ```
 
