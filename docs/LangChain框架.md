@@ -25,7 +25,7 @@
 
 ![image-20260630095411](../image/image-20260630095411.png)
 
-## 1.3LangChain的总体架构
+## 1.3.LangChain的总体架构
 
 ```python
 LangChain的架构主要包括六大核心组件:
@@ -2162,7 +2162,7 @@ import os
 client = MilvusClient("http://localhost:19530")
 embed_model = DashScopeEmbeddings(
     model="text-embedding-v3",
-    dashscope_api_key=os.getenv("aliQwen-api"),
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY"),
 )
 
 # 2. 全量遍历所有数据
@@ -2203,5 +2203,486 @@ search_res = client.search(
 
 for item in search_res[0]:
     print(f"相似度分数：{item['distance']:.4f} | 内容：{item['entity']['text']}")
+```
+
+# 17.Tools工具调用
+
+![image-20260703203721.png](../image/image-20260703203721.png)
+
+## 17.1.基本介绍
+
+```python
+1.大模型自身知识有限，无法实时查数据、算数值、调用外部接口
+
+2.工具调用 = 让模型自动判断何时调用自定义函数 / 接口，获取外部信息再回答用户
+
+3.通过 Tool（工具）机制，可以让模型具备“调用外部函数”的能力，使其能够与外部系统、API 或自定义函数交互，从而完成仅靠文本生成无法实现的任务
+  a.读取外部数据：实时资讯、实时指标、私有知识库、向量库检索
+  b.执行外部操作：发送消息、调用业务接口、文件处理、复杂计算
+
+4.核心三要素
+  a.Tool（工具函数）
+  自己写的可执行功能：查天气、向量检索、数据库查询、计算器、联网搜索等
+
+  b.Tool Definition（工具描述）
+  给模型看的函数说明：函数名、作用、入参类型、参数含义，告诉模型这个工具能干什么
+
+  c.Agent/LLM 调度
+  模型自主决策：是否需要调用工具 → 生成合法参数 → 执行函数 → 把结果丢回模型生成最终答案
+
+5.完整执行流程（4 步闭环）
+  a.用户提问，LLM 判断：现有知识答不出，需要调用工具
+  b.LLM 根据工具定义，输出结构化工具调用参数（JSON）
+  c.程序解析 JSON，执行对应工具函数，拿到返回结果
+  d.将「用户问题 + 工具返回数据」一并传入大模型，生成带外部信息的最终回答
+```
+
+![image-20260703205949.png](../image/image-20260703205949.png)
+
+## 17.2.自定义Tool 
+
+### 17.2.1.@tool 装饰器
+
+```python
+1.介绍：@tool 是 LangChain 提供的装饰器，可以普通 Python 函数转换成大模型可识别的工具对象，不用手动写复杂的 tools JSON 描述
+
+2.基础使用规则
+  a.写在函数上方，格式 @tool
+  b.函数内必须写清晰的文档字符串（""""""）
+    第一句：工具整体用途
+    Args：每个参数含义
+  c.函数入参尽量简单，只放字符串、数字等基础类型
+
+  @tool
+  def milvus_search(question: str) -> str:
+    """
+    从本地Milvus向量库检索相关知识库文本
+    Args:
+        question: 用户的提问文本
+    """
+    # 内部放向量检索逻辑
+    return "检索到的参考文档内容"
+
+3.Tool 常用属性
+  a.name("自定义工具名")
+  工具名称，默认等于函数名，大模型靠这个标识调用工具
+  可手动修改：@tool("自定义工具名")
+    
+  b.description
+  工具功能描述，取自函数三引号文档注释；模型靠它判断什么时候调用本工具
+    
+  c.args_schema
+  参数结构，自动解析函数入参、类型、注释，生成标准入参 JSON
+    
+  d.return_direct（布尔值）
+  False（默认）：工具执行结果传回大模型，由模型整理输出最终回答
+  True：工具结果直接返回给用户，不再交给 LLM 二次加工
+
+  # 手动指定是为了让大模型更好识别工具、精准触发调用，并控制工具结果是否交给模型二次整理输出
+  @tool(
+    name="milvus_rag_search",
+    description="向量知识库检索工具，查询AI、Milvus、RAG相关知识",
+    return_direct=False
+    )
+  def milvus_search(question: str):
+    pass
+
+
+4.写好自定义 Tool 的关键点
+  a.description 描述必须直白，讲清工具用途；描述模糊会导致模型不会调用或传参错误
+  b.参数名、参数含义清晰，必填参数明确标注
+  c.工具函数返回内容精简，不要返回超长冗余文本，避免上下文溢出
+  d.一个工具只做一件事，功能拆分，不要一个函数混杂多种逻辑
+```
+
+### 17.2.2.数据校验_Pydantic
+
+```python
+1.介绍：Pydantic 是 Python 数据校验工具，通过定义模型规范数据格式，自动校验类型、约束参数，常用于接口、向量库、工具调用参数标准化
+
+2.核心功能
+  a.自动类型校验：传字符串给 int 字段直接报错，拦截脏数据
+  b.Field 参数约束：限定长度、最大值最小值、默认值、字段说明
+  c.字典互转：model_dump() 对象转字典，适配 Milvus 插入格式
+  d.工具参数标准化：搭配 Tool 使用，规范模型调用时传入的参数结构
+
+3.基础示例
+  # 定义向量存储实体结构
+  class DocEntity(BaseModel):
+    id: int = Field(description="主键ID")
+    vector: list[float] = Field(description="1024维向量")
+    text: str = Field(description="原始文本")
+    source: str = Field(default="demo", description="数据来源")
+
+4.说明
+  给类加上 pydantic.BaseModel 后，实例化那一刻就会按类型注解做
+  - 类型检查（int 必须是 int，str 必须是 str…）
+  - 自动转换（"123" → 123，"true" → True …）
+  - 字段缺失、超范围、格式不对都会抛清晰的 ValidationError
+
+```
+
+### 17.2.3.使用案例
+
+```python
+'''
+需求：
+定义了一个名为add_number的工具函数，用于执行两个整数相加操作。主要功能包括：
+
+使用Pydantic定义参数模型FieldInfo，指定两个整数参数a和b
+通过@tool装饰器将函数注册为LangChain工具，绑定参数schema
+打印工具的元信息（名称、参数、描述等）并调用工具执行加法运算并输出结果
+'''
+
+from langchain_core.tools import tool
+from loguru import logger
+from pydantic import BaseModel, Field
+
+
+# 使用Pydantic定义参数模型FieldInfo，指定两个整数参数a和b
+class FieldInfo(BaseModel):
+    """
+    定义加法运算所需的参数信息
+    """
+    a: int = Field(description="第1个参数")
+    b: int = Field(description="第2个参数")
+
+
+# 通过args_schema定义参数信息，也可以定义name、description、return_direct参数
+@tool(args_schema=FieldInfo)
+def add_number(a: int, b: int) -> int:
+    return a + b
+
+
+# 打印工具的基本信息
+logger.info(f"name = {add_number.name}")
+logger.info(f"args = {add_number.args}")
+logger.info(f"description = {add_number.description}")
+logger.info(f"return_direct = {add_number.return_direct}")
+
+# 调用工具执行加法运算
+res = add_number.invoke({"a": 1, "b": 2})
+logger.info(res)
+```
+
+## 17.3.天气助手案例
+
+```python
+实现一个天气查询功能。通过调用OpenWeather API获取指定城市的实时天气数据，并将结果以自然语言形式输出
+ 
+主要步骤包括构建请求、发送HTTP请求、解析JSON响应并格式化为易读的中文描述
+ 
+登录https://home.openweathermap.org/api_keys，免费获取API Key，并写入.env文件中，方便后续进行天气查询
+```
+
+### 17.3.1.获取并配置 API Key
+
+```python
+1.官网获取密钥
+  打开地址：https://home.openweathermap.org/api_keys
+  登录 / 注册账号，进入 API keys 页面
+  复制默认生成的密钥（32 位字符串）
+    
+2.本地配置.env 文件
+  项目文件夹新建文件，命名 .env
+  文件写入内容： OPENWEATHER_API_KEY=你复制的32位密钥
+```
+
+### 17.3.2.定义工具
+
+```python
+import random
+
+from langchain_core.tools import tool
+import json
+import os
+import httpx
+from dotenv import load_dotenv  # 导入读取.env工具
+
+# 加载同目录下 .env 文件中的所有环境变量
+load_dotenv()
+
+@tool
+def get_weather(loc):
+    """
+    查询即时天气函数
+
+    :param loc: 必要参数，字符串类型，用于表示查询天气的具体城市名称。
+                注意，中国的城市需要用对应城市的英文名称代替，例如如果需要查询北京市天气，
+                则 loc 参数需要输入 'Beijing'/'shanghai'。
+    :return: OpenWeather API 查询即时天气的结果。具体 URL 请求地址为：
+             https://home.openweathermap.org/users/sign_in。
+             返回结果对象类型为解析之后的 JSON 格式对象，并用字符串形式进行表示，
+             其中包含了全部重要的天气信息。
+    """
+    # Step 1. 构建请求 URL
+    url = "https://api.openweathermap.org/data/2.5/weather"
+
+    # Step 2. 设置查询参数，包括城市名、API Key、单位和语言
+    # 程序没错，但是实际偶尔会有调用不成功的情况
+    params = {
+        "q": loc,
+        "appid": os.getenv("OPENWEATHER_API_KEY"),  # 从环境变量中读取 API Key
+        # "appid": "fc19f7b552b4c1ae467e36fe69556668",  # 硬编码写死 API Key
+        "units": "metric",  # 使用摄氏度
+        "lang": "zh_cn"  # 输出语言为简体中文
+    }
+
+    # Step 3. 发送 GET 请求获取天气数据 @GetMapping
+    response = httpx.get(url, params=params, timeout=30)
+
+    # Step 4. 解析响应内容为 JSON 并序列化为字符串返回
+    data = response.json()
+    # print(json.dumps(data))
+    return json.dumps(data)
+
+
+# 测试
+cityList = ["beijing", "shanghai", "chengdu", "guangzhou"]
+targetCity = random.choice(cityList)
+result = get_weather.invoke(targetCity)
+print(result)
+
+# 网络报错，多调试几次或者等。。。。。。
+# httpx.ConnectTimeout: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。
+```
+
+### 17.3.3.大模型调用 Tool
+
+```python
+用户问城市天气 → 模型自动调用天气 API 工具拿原始 JSON → 再交给大模型把 JSON 转通顺中文天气文案输出
+
+import os
+from langchain_core.output_parsers import JsonOutputKeyToolsParser, StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from loguru import logger
+from QueryWeatherTool import get_weather
+
+# 初始化大语言模型实例，使用 qwen3:14b 模型
+llm = ChatOpenAI(
+    model="qwen-plus",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 将模型与工具绑定，使其能够调用 get_weather 工具
+llm_with_tools = llm.bind_tools([get_weather])
+
+# 创建解析器，用于提取工具调用结果中的 JSON 数据
+parser = JsonOutputKeyToolsParser(key_name=get_weather.name, first_tool_only=True)
+
+# 构建工具调用链：模型 -> 解析器 -> 调用天气工具
+get_weather_chain = llm_with_tools | parser | get_weather
+# print(get_weather_chain.invoke("你好， 请问北京的天气怎么样？"))
+# 定义输出提示模板，将 JSON 天气数据转换为自然语言描述
+output_prompt = PromptTemplate.from_template(
+    """你将收到一段 JSON 格式的天气数据{weather_json}，请用简洁自然的方式将其转述给用户。
+    以下是天气 JSON 数据：
+    请将其转换为中文天气描述，例如：
+    “北京现在天气：多云，气温 28℃，体感有点闷热（约 32℃），湿度 75%，微风（东南风 2 米/秒），
+    能见度很好，大约 10 公里。建议穿短袖短裤。适合做户外运动。"
+    """
+)
+
+# 创建字符串输出解析器
+output_parser = StrOutputParser()
+
+# 构建最终输出链：提示模板 -> 模型 -> 输出解析器
+output_chain = output_prompt | llm | output_parser
+
+# 构建完整的处理链：天气查询链 ->将天气数据包装为字典格式 -> 输出链
+full_chain = get_weather_chain | (lambda x: {"weather_json": x}) | output_chain
+
+# 执行完整链路，查询上海天气并打印结果
+result = full_chain.invoke("请问北京今天的天气如何？")
+logger.info(result)
+```
+
+# 18.检索增强生成RAG
+
+## 18.1.基本介绍
+
+```python
+1.RAG (Retrieval Augmented Generation) 检索增强生成，用来解决模型知识过时、凭空编造内容的问题
+  大模型本身知识有限、容易瞎编，RAG 给模型加了一个「外置知识库」（类似考试时有不懂的，给你准备了小抄）：
+  用户提问 → 先去向量数据库检索相关真实文档片段 → 把原文+问题一起发给大模型 → 模型只靠查到的资料生成答案
+
+
+2.官网：https://docs.langchain.com/oss/python/integrations/retrievers
+
+3.为什么需要 RAG（大模型三大痛点）
+  a.知识截止：模型训练数据有时间上限，不知道最新信息
+  b.幻觉问题：已读不回、已读乱回、似是而非
+  c.无私有知识：企业内部文档、个人资料不在模型训练数据里，无法回答
+    
+```
+
+## 18.2.LangChain的RAG组件
+
+```python
+LangChain 框架提供了丰富的组件帮助我们搭建 RAG 应用，下面核心组件的介绍：
+```
+
+| LangChain 组件   | 作用                               | 常用组件类                                                   |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------ |
+| 文档加载器       | 对各种格式的文档信息进行加载       | Document（文档组件）、UnstructuredPDFLoader（PDF 文档加载器）、UnstructuredFileLoader（文件文档加载器）、UnstructuredMarkdownLoader（markdown 文档文本加载器） |
+| 文档分割器       | 将加载的文档分割成文档片段         | RecursiveCharacterTextSplitter（递归字符文本分割器）         |
+| 文本嵌入模型组件 | 将文本信息向量化                   | OpenAIEmbeddings（OpenAI 文本嵌入模型）、HuggingFaceEmbeddings（HuggingFace 文本嵌入模型） |
+| 向量数据库组件   | 将向量和元数据信息保存到向量数据库 | VectorStore（向量数据库，不同向量数据库有不同的实现类）      |
+| 文本检索器       | 根据用户提问在向量数据库中进行检索 | VectorStoreRetriever（向量数据库检索器）                     |
+
+## 18.3.RAG标准流程
+
+```python
+1.在 RAG 准备阶段，LangChain 通过文档加载器对各种格式的文档进行加载，转换为 LangChain 中的文档对象
+
+2.对文档对象进行分割，根据分割规则，分割成文档片段
+
+3.将文档片段通过文本嵌入模型组件，转换为向量，通过向量数据库组件，保存到向量数据库
+
+4.在 RAG 的使用阶段，用户首先提出问题，使用文本嵌入模型组件，将提问文本转换为向量数据，通过向量数据库检索器组件，进行相似性检索，返回关联的文本片段
+
+5.将相关的文档片段内容渲染到提示词模板中，作为提问问题的上下文传递给大模型，在上下文里做 “阅读 - 理解 - 整合 - 生成”，最后把整理好的答案返回给用户
+
+总结：RAG 的核心卖点正是让生成模型利用检索到的外部知识再做一次深加工，从而给出连贯、准确且带引用的回答
+```
+
+## 18.4.文档加载器
+
+### 18.4.1.基本介绍
+
+```python
+1.文档加载器负责读取各类文件，统一转换成 LangChain 标准文档对象，供后续分割、向量化使用
+
+2.常用的文档加载器
+  a.CSVLoader：加载 CSV 表格文件
+  b.Unstructured 系列：万能加载器，支持 PDF、Markdown、Word、TXT 等绝大多数文件
+  c.JSONLoader：加载 JSON 格式文件
+  d.BSHTMLLoader：加载 HTML 网页文件
+  e.DoclingLoader：多格式文档解析，文档排版还原效果好
+  f.PolarisAIDataInsightLoader：金山在线 Office 文档专用加载器
+3.所有文档加载器都继承 BaseLoader 基类，因此具备统一规范
+  每个加载器有专属配置参数，适配不同文件格式
+  通用统一方法：load()
+  load() 返回值：Document 对象列表，是 LangChain 标准文档格式
+```
+
+![image-20260704135922.png](../image/image-20260704135922.png)
+
+### 18.4.2.CSVLoader
+
+```python
+# pip install langchain_community
+from langchain_community.document_loaders.csv_loader import CSVLoader
+
+# 加载所有列
+docs = CSVLoader(
+    file_path="assets/sample.csv",  # 文件路径
+).load()  # 返回List[Document]
+
+print(docs)
+
+# 加载部分列
+docs = CSVLoader(
+    file_path="assets/sample.csv",  # 文件路径
+    metadata_columns=["title", "author"],  # 将指定列作为元数据
+    content_columns=["content"],  # 将指定列作为内容
+).load()  # 返回List[Document]
+
+print(docs)
+```
+
+### 18.4.3.DocumentLoader
+
+```python
+# pip install langchain_community unstructured[docx]
+# pip install -U unstructured
+# pip install python-docx
+# pip install regex==2026.1.14
+
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader
+
+docs = UnstructuredWordDocumentLoader(
+    # 文件路径
+    file_path="assets/alibaba-more.docx",
+    # 加载模式:
+    #   single 返回单个Document对象
+    #   elements 按标题等元素切分文档
+    mode="single",
+).load()
+
+print(docs)
+```
+
+### 18.4.4.JSONLoader
+
+```python
+# pip install jq
+
+from langchain_community.document_loaders import JSONLoader
+
+# 提取所有字段
+docs = JSONLoader(
+    file_path="assets/sample.json",  # 文件路径
+    jq_schema=".",  # 提取所有字段
+    text_content=False,  # 提取内容是否为字符串格式
+).load()
+
+print(docs)
+```
+
+### 18.4.5.MarkdownLoader
+
+```python
+# pip install langchain_community unstructured[md]
+
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+
+docs = UnstructuredMarkdownLoader(
+    # 文件路径
+    file_path="assets/sample.md",
+    # 加载模式:
+    #   single 返回单个Document对象
+    #   elements 按标题等元素切分文档
+    mode="elements",
+).load()
+
+print(docs)
+```
+
+### 18.4.6.PDFLoader
+
+```python
+# pip install langchain_community
+
+from langchain_community.document_loaders import PyPDFLoader
+
+docs = PyPDFLoader(
+    # 文件路径，支持本地文件和在线文件链接，如"https://arxiv.org/pdf/alg-geom/9202012"
+    file_path="assets/sample.pdf",
+    # 提取模式:
+    #   plain 提取文本
+    #   layout 按布局提取
+    extraction_mode="plain",
+).load()
+
+print(docs)
+```
+
+### 18.4.7.TextLoader
+
+```python
+# pip install langchain_community
+
+from langchain_community.document_loaders import TextLoader
+
+# 返回List[Document]
+file_path = "assets/sample.txt"  # 文件路径
+encoding = "utf-8"  # 文件编码方式
+
+docs = TextLoader(file_path, encoding).load()
+
+print(docs)
 ```
 
