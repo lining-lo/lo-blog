@@ -3186,3 +3186,614 @@ if __name__ == "__main__":
     asyncio.run(run_chat_loop())
 ```
 
+# 20.Agent智能体
+
+![image-20260705134637.png](../image/image-20260705134637.png)
+
+## 20.1.基本介绍
+
+```python
+1.大模型不只是单纯回答问题，能自主思考、规划、调用工具、分步完成复杂任务的智能主体，就是 Agent
+  核心区别：普通大模型只输出文字；Agent 会主动行动
+
+2.Agent = LLM 大脑 + Memory 记忆 + Planning 规划 + Tools 工具集
+
+3.官网：https://docs.langchain.com/oss/python/deepagents/overview
+
+4.可以通过 create_agent 来创建智能体
+  agent = create_agent(
+    llm=llm,        # 必填：模型
+    tools=[calc],   # 必填：工具
+    prompt="计算必须用工具",  # 必填：提示词
+    max_iterations=5,  # 可选：最大工具调用循环次数，防止死循环
+    streaming=True,    # 可选：开启流式分段输出
+    return_intermediate_steps=True  # 可选：返回每一步工具调用日志，方便调试
+  )
+  agent.invoke({"input":"(12+3)*8"})
+
+5.Tool VS Agent
+  Tool 就像“工具箱里的螺丝刀、锤子”
+  Agent 就像“一个有判断力的工匠”，他知道什么时候用螺丝刀，什么时候用锤子，甚至知道先用螺丝刀再用锤子
+```
+
+| 场景                                                         | Tool 能否解决？                           | Agent 的作用                             |
+| ------------------------------------------------------------ | ----------------------------------------- | ---------------------------------------- |
+| 用户问：“北京现在的天气怎么样？”                             | ✅ 直接调用天气 Tool 就行                  | ❌ 不需要 Agent                           |
+| 用户问：“帮我订一张明天从北京到上海的机票，并且查一下上海的天气” | ❌ Tool 无法决定先订票还是先查天气         | ✅ Agent 会推理：先订票→再查天气→组合结果 |
+| 用户问：“我有一份 PDF，帮我总结一下，然后把总结发到我的邮箱” | ❌ 需要多个 Tool（PDF 读取、总结、发邮件） | ✅ Agent 会按顺序调用多个 Tool            |
+
+## 20.2.使用案例
+
+```python
+import os
+import json
+import httpx
+from typing import TypedDict
+
+from langchain.agents import create_agent
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+
+
+# 1.Tool 定义
+@tool
+def get_weather(loc: str) -> dict:
+    """
+    查询即时天气函数
+
+    :param loc: 必要参数，字符串类型，用于表示查询天气的具体城市名称。
+                注意，中国的城市需要用对应城市的英文名称代替，例如如果需要查询北京市天气，
+                则 loc 参数需要输入 'Beijing'/'shanghai'。
+    :return: OpenWeather API 查询即时天气的结果。
+    """
+    url = "https://api.openweathermap.org/data/2.5/weather"
+    params = {
+        "q": loc,
+        "appid": os.getenv("OPENWEATHER_API_KEY"),
+        "units": "metric",
+        "lang": "zh_cn"
+    }
+    response = httpx.get(url, params=params, timeout=30)
+    data = response.json()
+    # print(json.dumps(data, ensure_ascii=False, indent=2))
+    return json.dumps(data, ensure_ascii=False)
+
+
+# 2 结构化输出（推荐）
+class WeatherCompareOutput(TypedDict):
+    beijing_temp: float
+    shanghai_temp: float
+    hotter_city: str
+    summary: str
+
+
+# 3 模型（OpenAI Compatible）
+model = ChatOpenAI(
+    model="qwen-plus",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+# 4 创建Agent
+agent = create_agent(
+    model=model,
+    tools=[get_weather],
+    system_prompt=(
+        "你是天气助手。"
+        "当用户询问多个城市天气时，"
+        "你需要分别调用工具获取数据，并进行比较分析。"
+    ),
+    response_format=WeatherCompareOutput,
+)
+
+# 5 调用Agent
+result = agent.invoke({"input": "请问今天北京和上海的天气怎么样，哪个城市更热？"})
+print(result)
+
+print()
+
+print(json.dumps(result["structured_response"], ensure_ascii=False, indent=2))
+```
+
+## 20.3.ReAct 框架
+
+### 20.3.1.理论说明
+
+```
+1.ReAct 框架的本质，是用统一的自然语言格式，把「思考（Reasoning）」和「行动（Acting）」拉到台面上，
+让我们既能让模型自己规划步骤、调用工具，又能清晰地观察和调试整个过程
+
+2.ReAct = Reasoning（思考）+ Acting（行动）
+
+3.核心作用
+  模型自主拆分任务、规划执行步骤
+  自动判断何时调用工具、选用什么工具
+  完整留存思考 + 行动日志，方便排查问题
+```
+
+### 20.3.2.代码实现
+
+```python
+import os
+
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+from langchain.tools import tool
+
+# 模拟产品数据库.select * from PRODUCT_DATABASE....
+PRODUCT_DATABASE = {
+    "无线耳机": [
+        {"id": "WH-1000XM5", "name": "索尼 WH-1000XM5", "popularity": 95, "price": 299},
+        {"id": "QC45", "name": "Bose QuietComfort 45", "popularity": 88, "price": 329},
+        {"id": "AIRMAX", "name": "苹果 AirPods Max", "popularity": 92, "price": 549},
+        {"id": "PXC550", "name": "森海塞尔 PXC 550", "popularity": 76, "price": 299},
+        {"id": "HT450", "name": "JBL Tune 760NC", "popularity": 82, "price": 99}
+    ],
+    "游戏鼠标": [
+        {"id": "GPW", "name": "罗技 G Pro 无线", "popularity": 90, "price": 129},
+        {"id": "VIPER", "name": "雷蛇 Viper V2 Pro", "popularity": 87, "price": 149},
+        {"id": "DAV3", "name": "雷蛇 DeathAdder V3", "popularity": 85, "price": 119}
+    ],
+    "笔记本电脑": [
+        {"id": "MBP14", "name": "MacBook Pro 14英寸", "popularity": 94, "price": 1999},
+        {"id": "XPS13", "name": "戴尔 XPS 13", "popularity": 89, "price": 1299},
+        {"id": "TPX1", "name": "ThinkPad X1 Carbon", "popularity": 86, "price": 1499}
+    ]
+}
+
+# 模拟库存数据库
+INVENTORY_DATABASE = {
+    "WH-1000XM5": {"stock": 10, "location": "仓库-A"},
+    "QC45": {"stock": 0, "location": "仓库-B"},
+    "AIRMAX": {"stock": 5, "location": "仓库-C"},
+    "PXC550": {"stock": 15, "location": "仓库-A"},
+    "HT450": {"stock": 25, "location": "仓库-B"},
+    "GPW": {"stock": 8, "location": "仓库-C"},
+    "VIPER": {"stock": 12, "location": "仓库-A"},
+    "DAV3": {"stock": 3, "location": "仓库-B"},
+    "MBP14": {"stock": 7, "location": "仓库-C"},
+    "XPS13": {"stock": 0, "location": "仓库-A"},
+    "TPX1": {"stock": 4, "location": "仓库-B"}
+}
+
+
+# 工具1：搜索产品utils工具类
+@tool
+def search_products(query: str) -> str:
+    """搜索产品并返回按受欢迎度排序的结果"""
+    print(f"🔍 [工具调用] search_products('{query}')")
+
+    # 关键词映射，支持多种中文表达方式
+    keyword_mapping = {
+        "无线耳机": ["无线耳机", "蓝牙耳机", "头戴式耳机", "耳机"],
+        "游戏鼠标": ["游戏鼠标", "电竞鼠标", "鼠标"],
+        "笔记本电脑": ["笔记本电脑", "笔记本", "手提电脑", "电脑"]
+    }
+
+    # 查找匹配的类别
+    matched_category = None
+    for category, keywords in keyword_mapping.items():
+        if any(keyword in query for keyword in keywords):
+            matched_category = category
+            break
+
+    if matched_category and matched_category in PRODUCT_DATABASE:
+        products = PRODUCT_DATABASE[matched_category]
+        # 按受欢迎度排序
+        sorted_products = sorted(products, key=lambda x: x['popularity'], reverse=True)
+        result = f"找到 {len(sorted_products)} 个匹配 '{query}' 的产品:\n"
+
+        for i, product in enumerate(sorted_products, 1):
+            result += f"{i}. {product['name']} (ID: {product['id']}) - 受欢迎度: {product['popularity']}% - ￥{product['price']}\n"
+
+        return result
+
+
+# 工具2：检查库存
+@tool
+def check_inventory(product_id: str) -> str:
+    """检查特定产品的库存状态"""
+    print(f"📦 [工具调用] check_inventory('{product_id}')")
+
+    if product_id in INVENTORY_DATABASE:
+        stock_info = INVENTORY_DATABASE[product_id]
+        status = "有库存" if stock_info['stock'] > 0 else "缺货"
+        return f"产品 {product_id}: {status} ({stock_info['stock']} 件库存) - 位置: {stock_info['location']}"
+    else:
+        return f"未找到产品ID: {product_id}"
+
+
+# 创建代理
+model = ChatOpenAI(
+    model="qwen-plus",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+)
+
+agent = create_agent(
+    model,
+    tools=[search_products, check_inventory],
+    system_prompt="""你是电商助手，遵循ReAct模式：
+    1. 先推理用户需求
+    2. 选择合适的工具执行操作
+    3. 基于工具结果进行下一步推理
+    4. 重复直到获得完整答案
+
+    保持推理步骤简洁明了。"""
+)
+
+# 测试案例1：无线耳机搜索
+result1 = agent.invoke({
+    "messages": [{"role": "user", "content": "查找当前最受欢迎的无线耳机并检查是否有库存"}]
+})
+
+print("\n" + "=" * 40)
+print("📊 最终结果:")
+for msg in result1['messages']:
+    if hasattr(msg, 'content'):
+        print(f"{msg.__class__.__name__}: {msg.content}")
+print("=" * 40)
+
+print()
+print()
+
+
+# 详细追踪ReAct循环过程
+def track_react_cycle(messages):
+    print("ReAct循环步骤分析:")
+    step = 1
+    for i, msg in enumerate(messages):
+        msg_type = msg.__class__.__name__
+        if msg_type == "AIMessage" and hasattr(msg, 'tool_calls') and msg.tool_calls:
+            print(f"\n🔄 步骤{step}: Reasoning + Acting")
+            for tool_call in msg.tool_calls:
+                print(f"   🛠️  工具调用: {tool_call['name']}({tool_call['args']})")
+            step += 1
+        elif msg_type == "ToolMessage":
+            print(f"   📋  观察结果: {msg.content[:80]}...")
+        elif msg_type == "AIMessage" and not (hasattr(msg, 'tool_calls') and msg.tool_calls):
+            print(f"\n✅ 最终回答: {msg.content}")
+
+
+# 追踪案例1的ReAct循环
+track_react_cycle(result1['messages'])
+```
+
+## 20.4.A2A协助案例
+
+### 20.4.1.案例分析
+
+```python
+1.Agent-to-Agent (A2A) 协作案例 — LangChain 1.0 + 通义千问 qwen-plus
+  模拟携程订机票、美团订酒店、滴滴打车的跨平台智能协作流程
+  核心是让不同领域的专属 Agent 分工协作、完成完整的出行服务闭环
+  业务场景：用户提出"从北京飞上海、订浦东机场附近酒店、从机场打车到酒店"的完整需求
+  系统通过 3 个领域子 Agent + 1 个总协调 Agent 协作完成
+
+2.A2A 调用关系（消息以协调器为中心转发，子 Agent 之间不直接通信 = Mediator 模式）：
+这套代码是标准的「总协调 Agent + 领域子 Agent」架构，也叫 Mediator（调解者）模式，是企业级多 Agent 协作最常用的架构
+
+简单说：A2A调度 = 多个功能单一的 Runnable 子 Agent 链 + 一个控制调用逻辑的总协调器（不一定是Agent）。
+
+    用户请求
+       │
+       ▼
+   ┌───────────────────────────────┐
+   │   总协调 Agent (Coordinator)   │
+   │   - 解析请求 → TripPlan        │
+   │   - 按依赖顺序调度各子 Agent    │
+   │   - 在子 Agent 间转发上下文     │
+   │   - 汇总最终报告               │
+   └─┬─────────┬─────────┬─────────┘
+     │ ①机票   │ ②酒店    │ ③打车
+     ▼         ▼         ▼
+  [携程Agent] [美团Agent] [滴滴Agent]
+     │         │         │
+     ▼         ▼         ▼
+  CtripBook  Meituan    DidiBook    (@tool 业务接口)
+  Flight     Hotel      Taxi
+
+============上图简化版============
+  用户请求
+    ↓
+总协调 Agent（大脑/调度中心）
+    ↙️      ↓       ↘️
+机票Agent  酒店Agent  打车Agent
+    ↓       ↓        ↓
+  订机票    订酒店    预约车
+========================
+
+3.三大设计原则
+  子 Agent 只做一件事：每个子 Agent 只绑定一个工具，只负责一个垂直业务（单一职责）
+  子 Agent 之间不直接通信：所有数据、上下文、执行顺序全部由总协调器控制（解耦）
+  业务依赖严格顺序：机票 → 酒店 → 打车（必须按业务逻辑串行执行）
+
+  数据流（接力 / 上下文传递）：
+    ① 携程的目的地城市 ─────────────────────▶ ② 美团的 city
+    ① 携程的"降落时间 + 10 分钟" ───────────▶ ③ 滴滴的 time
+    ② 美团的"酒店名称" ────────────────────▶ ③ 滴滴的 end
+
+```
+
+### 20.4.2.代码实现
+
+```python
+import os
+import re
+from datetime import datetime, timedelta
+from typing import TypedDict
+
+from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain.tools import tool
+from langchain.agents import create_agent  # LangChain 1.0 高层 Agent 构建 API
+
+# ==================== 1. 大模型配置 =========================
+llm = ChatOpenAI(
+    model="qwen-plus",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    temperature=0,
+)
+
+
+# ==================== 2. 业务工具 (@tool) ====================
+# 每个工具就是一个领域能力的最小执行单元，子 Agent 通过 tool_calls 调用它们。
+@tool("CtripBookFlight")
+def ctrip_book_flight(departure: str, arrival: str, date: str) -> str:
+    """预订机票。参数：departure 出发地、arrival 目的地、date 出行日期 (YYYY-MM-DD)。"""
+    return (
+        f"【携程机票预订成功】\n"
+        f"出发地：{departure}\n目的地：{arrival}\n出行日期：{date}\n"
+        f"航班号：CA1885（北京首都T3 → 上海浦东T2）\n"
+        f"起飞时间：14:00\n降落时间：16:30\n"
+        f"座位：经济舱34A\n电子客票号：999-1234567890"
+    )
+
+
+@tool("MeituanBookHotel")
+def meituan_book_hotel(city: str, near_by: str, check_in: str, check_out: str) -> str:
+    """预订酒店。参数：city 城市、near_by 地标、check_in 入住日期、check_out 离店日期。"""
+    return (
+        f"【美团酒店预订成功】\n"
+        f"城市：{city}\n位置：{near_by}附近\n"
+        f"入住日期：{check_in}\n离店日期：{check_out}\n"
+        f"酒店名称：上海浦东机场铂尔曼大酒店\n"
+        f"房型：豪华大床房（含双人自助早餐）\n"
+        f"预订号：MT20260201001"
+    )
+
+
+@tool("DidiBookTaxi")
+def didi_book_taxi(start: str, end: str, time: str) -> str:
+    """预约打车。参数：start 起点、end 终点、time 用车时间 (YYYY-MM-DD HH:MM)。"""
+    return (
+        f"【滴滴打车预约成功】\n"
+        f"起点：{start}\n终点：{end}\n用车时间：{time}\n"
+        f"车型：滴滴快车（舒适型）\n"
+        f"司机：王师傅 / 沪A12345 / 13800138000\n"
+        f"预估费用：35元（券后实付30元）"
+    )
+
+
+# =============3. run_tool_agent 工具执行器（通用逻辑）子 Agent 通用执行器 ============
+# create_agent() 返回的是 LangGraph 风格的 Agent，输入/输出都是 messages 列表：
+#   输入: {"messages": [HumanMessage(...)]}
+#   输出: {"messages": [..., AIMessage(...)]}
+# 它内部已经实现了 "LLM 产 tool_calls → 执行工具 → 把 ToolMessage 喂回 LLM → 直至产出最终回复"的完整循环。
+# 所以这里我们处理如下：
+#   - 把用户任务包成 HumanMessage 发进去
+#   - 从返回 messages 中找出最后一条 ToolMessage 的内容（即工具真实执行结果）
+# 这样既保留了协调器与子 Agent 的解耦契约（输入字符串、输出工具结果字符串），
+# 又用上了 create_agent 的标准化能力。
+
+def run_tool_agent(agent, user_input: str, expected_tool: str) -> str:
+    """
+    执行一个由 create_agent 构建的子 Agent：
+      1) 以 messages 形式驱动 Agent 完成一次工具调用循环
+      2) 从消息历史中取出 expected_tool 的 ToolMessage 内容作为结果
+    若 Agent 未调用预期工具，则抛出 RuntimeError，由协调器决定是否兜底。
+    """
+    # 官方create_agent 必须用 {"messages": [...]} 格式调用
+    result = agent.invoke({"messages": [HumanMessage(content=user_input)]})
+    # # 返回结果也是 messages 数组
+    messages = result["messages"]
+    print(f"*****>messages: {messages}")
+    # 从后往前找最后一次 expected_tool 的执行结果（ToolMessage.name 与工具名一致）
+    for msg in reversed(messages):
+        if getattr(msg, "type", None) == "tool" and getattr(msg, "name", None) == expected_tool:
+            return msg.content
+    last: AIMessage = messages[-1]
+    raise RuntimeError(f"子 Agent 未触发预期工具 {expected_tool}；模型回复：{last.content!r}")
+
+
+# ==================== 4. 三个专属子 Agent ====================
+# 每个子 Agent = create_agent(模型, 单一工具, 角色 system prompt)。
+# 它们对外只暴露 invoke({"messages": [...]})，不感知彼此的存在。
+
+def create_ctrip_agent():
+    """携程机票 Agent：只会调用 CtripBookFlight。"""
+    return create_agent(
+        model=llm,
+        tools=[ctrip_book_flight],
+        system_prompt=(
+            "你是携程机票预订助手。你必须且只能调用 CtripBookFlight 工具完成机票预订，"
+            "从用户输入中抽取 departure / arrival / date 三个参数，日期格式 YYYY-MM-DD。"
+        ),
+    )
+
+
+def create_meituan_agent():
+    """美团酒店 Agent：只会调用 MeituanBookHotel。"""
+    return create_agent(
+        model=llm,
+        tools=[meituan_book_hotel],
+        system_prompt=(
+            "你是美团酒店预订助手。你必须且只能调用 MeituanBookHotel 工具完成酒店预订，"
+            "从用户输入中抽取 city / near_by / check_in / check_out 四个参数，日期格式 YYYY-MM-DD。"
+        ),
+    )
+
+
+def create_didi_agent():
+    """滴滴打车 Agent：只会调用 DidiBookTaxi。"""
+    return create_agent(
+        model=llm,
+        tools=[didi_book_taxi],
+        system_prompt=(
+            "你是滴滴打车助手。你必须且只能调用 DidiBookTaxi 工具完成用车预约，"
+            "从用户输入中抽取 start / end / time 三个参数，时间格式 YYYY-MM-DD HH:MM。"
+        ),
+    )
+
+
+# ==================== 5. 行程计划数据结构 ====================
+# 协调器用它在子 Agent 之间传递结构化上下文，避免 Agent 间互发自由文本。
+class TripPlan(TypedDict):
+    departure: str  # 出发城市
+    arrival: str  # 到达城市
+    date: str  # 出行日期 YYYY-MM-DD
+    airport_terminal: str  # 机场航站楼（用作打车起点）
+    near_by: str  # 酒店附近地标
+
+
+# 第 1 步：解析用户需求,从自然语言提取：出发地、目的地、日期、机场、地标 → 结构化数据
+def parse_user_request(text: str) -> TripPlan:
+    """需求解析：从自然语言里抠出日期，其余字段回退到默认值。"""
+    m = re.search(r"\d{4}-\d{2}-\d{2}", text)
+    date = m.group(0) if m else "2026-02-01"
+    return TripPlan(
+        departure="北京",
+        arrival="上海",
+        date=date,
+        airport_terminal="上海浦东机场T2",
+        near_by="浦东机场",
+    )
+
+
+def add_minutes(date: str, hhmm: str, minutes: int) -> str:
+    """把 'YYYY-MM-DD' + 'HH:MM' 偏移若干分钟，返回 'YYYY-MM-DD HH:MM'。"""
+    dt = datetime.strptime(f"{date} {hhmm}", "%Y-%m-%d %H:%M") + timedelta(minutes=minutes)
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+# ==================== 6. 总协调 Agent ====================
+# 调度模式：Mediator —— 子 Agent 之间不直接对话，所有上下文经由协调器中转。
+# 调度顺序由业务依赖决定：机票(决定到达时间) → 酒店(决定打车终点) → 打车。
+
+def create_travel_coordinator(ctrip_chain, meituan_chain, didi_chain):
+    # 内部定义真正的执行函数
+    def coordinate(payload: dict) -> str:
+        # 1. 解析用户需求 → 结构化行程计划
+        plan = parse_user_request(payload["input"])
+        print(f"🧭 解析需求 → {plan}\n")
+
+        # ---- ① 机票 第 2 步：派发任务给机票 Agent----
+        print("① 派发任务给【携程机票 Agent】")
+        flight_task = (
+            f"请预订{plan['date']}从{plan['departure']}到{plan['arrival']}的机票。"
+        )
+        try:
+            # 第 2 步：派发任务给机票 Agent
+            # 子 Agent 生成工具调用参数 - 执行机票预订 -提取降落时间（给打车用）
+            flight_result = run_tool_agent(ctrip_chain, flight_task, "CtripBookFlight")
+        except Exception as e:
+            print(f"   ⚠️ 子 Agent 调用失败，启用兜底直调工具：{e}")
+            flight_result = ctrip_book_flight.invoke({
+                "departure": plan["departure"],
+                "arrival": plan["arrival"],
+                "date": plan["date"],
+            })
+        print(f"   ✅ 携程返回：\n{flight_result}\n" + "-" * 70)
+
+        # 从携程结果中抽取降落时间，作为打车时间的依据（A2A 上下文传递的关键一步）
+        landing_match = re.search(r"降落时间：(\d{2}:\d{2})", flight_result)
+        landing_hhmm = landing_match.group(1) if landing_match else "16:30"
+        pickup_time = add_minutes(plan["date"], landing_hhmm, 10)
+
+        # ---- ② 酒店 第 3 步：派发任务给酒店 Agent-----
+        print("② 派发任务给【美团酒店 Agent】")
+        check_out = (datetime.strptime(plan["date"], "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+        hotel_task = (
+            f"请在{plan['arrival']}{plan['near_by']}附近预订酒店，"
+            f"入住 {plan['date']}，离店 {check_out}。"
+        )
+        try:
+            # 第 3 步：派发任务给酒店 Agent
+            # 预订酒店,提取酒店名称（给打车当终点）
+            hotel_result = run_tool_agent(meituan_chain, hotel_task, "MeituanBookHotel")
+        except Exception as e:
+            print(f"   ⚠️ 子 Agent 调用失败，启用兜底直调工具：{e}")
+            hotel_result = meituan_book_hotel.invoke({
+                "city": plan["arrival"],
+                "near_by": plan["near_by"],
+                "check_in": plan["date"],
+                "check_out": check_out,
+            })
+        print(f"   ✅ 美团返回：\n{hotel_result}\n" + "-" * 70)
+
+        # 从酒店结果中抽取酒店名称，作为打车终点
+        hotel_match = re.search(r"酒店名称：(.+)", hotel_result)
+        hotel_name = hotel_match.group(1).strip() if hotel_match else "上海浦东机场铂尔曼大酒店"
+
+        # ---- ③ 打车（依赖 ① 的降落时间 + ② 的酒店名）第 4 步：派发任务给打车 Agent-----
+        print("③ 派发任务给【滴滴打车 Agent】（依赖前两步结果）")
+        taxi_task = (
+            f"请预约一辆从 {plan['airport_terminal']} 到 {hotel_name} 的车，"
+            f"用车时间 {pickup_time}。"
+        )
+        try:
+            # 第 4 步：派发任务给打车 Agent
+            # 起点：机场航站楼-终点：酒店名称-时间：降落 + 10 分钟
+            taxi_result = run_tool_agent(didi_chain, taxi_task, "DidiBookTaxi")
+        except Exception as e:
+            print(f"   ⚠️ 子 Agent 调用失败，启用兜底直调工具：{e}")
+            taxi_result = didi_book_taxi.invoke({
+                "start": plan["airport_terminal"],
+                "end": hotel_name,
+                "time": pickup_time,
+            })
+        print(f"   ✅ 滴滴返回：\n{taxi_result}\n" + "-" * 70)
+
+        # ---- 汇总报告 第 5 步：汇总报告返回-----
+        return (
+                "📋 A2A 协作最终报告\n"
+                + "=" * 70 + "\n"
+                + f"协作链路：用户 → 协调器 → 携程 → 协调器 → 美团 → 协调器 → 滴滴\n"
+                + f"上下文接力：航班降落 {landing_hhmm} +10min ⇒ 打车时间 {pickup_time}；"
+                  f"酒店名 ⇒ 打车终点\n"
+                + "=" * 70 + "\n"
+                + f"\n【1. 机票】\n{flight_result}\n"
+                + f"\n【2. 酒店】\n{hotel_result}\n"
+                + f"\n【3. 打车】\n{taxi_result}\n"
+                + "=" * 70
+        )
+
+    # RunnableLambda = 把一个普通 Python 函数，包装成 LangChain 可执行的标准组件
+    return RunnableLambda(coordinate)
+
+
+# ==================== 7. 入口 ====================
+if __name__ == "__main__":
+    try:
+        print("🔧 初始化3个子Agent...")
+        ctrip_chain = create_ctrip_agent()
+        meituan_chain = create_meituan_agent()
+        didi_chain = create_didi_agent()
+
+        print("🔧 初始化总协调者Agent...\n" + "=" * 70)
+        coordinator = create_travel_coordinator(ctrip_chain, meituan_chain, didi_chain)
+
+        print("🚀 开始 A2A 协作\n")
+        report = coordinator.invoke({"input": "安排2026-02-01北京飞上海的完整行程"})
+        print("\n" + report)
+
+    except Exception as e:
+        print(f"❌ 全局异常：{type(e).__name__} - {e}")
+        print("排查：\n"
+              "1) 环境变量 aliQwen-api 是否设置  "
+              "2) 网络能否访问 dashscope.aliyuncs.com  "
+              "3) langchain / langchain-openai 版本是否匹配 LangChain 1.0")
+```
+
