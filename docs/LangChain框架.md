@@ -3792,7 +3792,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ 全局异常：{type(e).__name__} - {e}")
         print("排查：\n"
-              "1) 环境变量 aliQwen-api 是否设置  "
+              "1) 环境变量 DASHSCOPE_API_KEY 是否设置  "
               "2) 网络能否访问 dashscope.aliyuncs.com  "
               "3) langchain / langchain-openai 版本是否匹配 LangChain 1.0")
 ```
