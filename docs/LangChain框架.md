@@ -2499,7 +2499,7 @@ result = full_chain.invoke("请问北京今天的天气如何？")
 logger.info(result)
 ```
 
-# 18.检索增强生成RAG
+# 18.RAG检索增强生成
 
 ## 18.1.基本介绍
 
@@ -2929,5 +2929,260 @@ if __name__ == '__main__':
     # AIOM_WithOut_Assistant()
 
     AIOM_Assistant()
+```
+
+# 19.MCP模型上下文协议
+
+## 19.1.基本介绍
+
+```python
+1.MCP 全称 Model Context Protocol，模型上下文协议
+
+2.官网：https://modelcontextprotocol.io/introduction
+    
+3.MCP 是一套标准化通信协议，提供了一种标准化的方式来连接 LLMs 需要的上下文，MCP 就类似于一个 Agent 时代的 Type-C协议，希望能将不同来源的数据、工具、服务统一起来供大模型调用
+
+4.为什么需要 MCP
+
+举个例子，例如我们目前还不能同时通过某个 AI 应用来做到联网搜索、发送邮件、发布自己的博客等等，这些功能单个实现都不是很难，但是如果要全部集成到一个系统里面，就会变得遥不可及。可以想象一下日常开发中，有一个 IDE，我们可以通过 IDE 的 AI 来完成下面这些工作:
+    
+  询问 AI 来查询本地数据库已有的数据来辅助开发
+  询问 AI 搜索 Github Issue 来判断某问题是不是已知的 bug
+  通过 AI 将某个 PR 的意见发送给同事的即时通讯软件 (例如 Slack) 来 Code Review
+  通过 AI 查询甚至修改当前 AWS、Azure 的配置来完成部署
+
+那有了 MCP 呢？其他服务都遵循 MCP 标准的话，就像万能接口一样，让我们开发更高效了
+
+5.MCP 生态资源汇总平台 mcp.so
+  收录了上万套已经封装好、遵循 MCP 标准的通用服务（文件读取、数据库、Git、云服务、搜索等）
+  不用自己从零写 MCP 服务端代码，直接复用现成 MCP 服务，快速接入 AI 程序
+
+  网址：https://mcp.so/zh
+
+6.MCP 遵循客户端-服务器架构，包含以下几个核心部分：
+  a.MCP 主机（MCP Hosts）：发起请求的 AI 应用程序，比如聊天机器人、AI 驱动的 IDE 等
+  b.MCP 客户端（MCP Clients）：在主机程序内部，与 MCP 服务器保持 1:1 的连接
+  c.MCP 服务器（MCP Servers）：为 MCP 客户端提供上下文、工具和提示信息
+  d.本地资源（Local Resources）：本地计算机中可供 MCP 服务器安全访问的资源，如文件、数据库
+  e.远程资源（Remote Resources）：MCP 服务器可以连接到的远程资源，如通过 API 提供的数据
+
+7.在 MCP 通信协议中，一般有两种模式
+  a.STDIO (标准输入 / 输出)
+  支持标准输入和输出流进行通信，主要用于本地集成、命令行工具等场景
+
+  b.SSE (Server-Sent Events)
+  支持使用 HTTP POST 请求进行服务器到客户端流式处理，以实现客户端到服务器的通信
+```
+
+| 特性     | SSE                              | STDIO                                |
+| -------- | -------------------------------- | ------------------------------------ |
+| 传输协议 | HTTP（长连接）                   | 操作系统级文件描述符                 |
+| 方向     | 服务器 → 客户端（单向推送）      | 双向流（stdin，stdout）              |
+| 保持连接 | 长连接（Connection: keep-alive） | 不保证长时间打开，取决于进程生命周期 |
+| 数据格式 | 文本流（EventStream 格式）       | 原始字节流                           |
+| 异常处理 | 可通过 HTTP 状态码或重连机制     | 进程退出或管道断裂                   |
+
+## 19.2.搭建MCP服务案例
+
+### 19.2.1.需求说明
+
+```python
+1.案例需求
+  a.同时接入两类 MCP 服务
+    SSE 远程服务：天气查询接口，支持公网 / 跨进程远程调用 
+    STDIO 本地工具：网页抓取工具，仅本地进程使用
+
+  b.统一配置文件mcp.json管理所有 MCP 服务，无需硬编码服务地址
+  c.基于 LangChain+DeepSeek 搭建 Agent，自动识别、选择对应 MCP 工具执行任务
+  d.用户自然语言提问，Agent 自主判断调用天气 / 网页抓取工具，返回整合后的答案
+    
+2.技术需求
+同时兼容 MCP 两种底层通信模式（STDIO、SSE），实现本地 + 远程工具统一调度，验证 MCP “通用万能接口” 的标准化能力。
+
+3.核心技术栈
+  LangChain + langchain-mcp-adapters + FastMCP + DeepSeek LLM
+  两种传输：STDIO（本地进程）、SSE（HTTP 长连接远程服务）
+
+4.核心流程
+  a.开发两个 MCP 服务端（SSE 天气服务、STDIO 网页抓取工具）
+  b.通过mcp.json统一注册所有 MCP 服务信息
+  c.LangChain 客户端读取配置，一次性连接全部 MCP 服务并加载工具
+  d.Agent 结合大模型，根据用户问题自动匹配并调用对应 MCP 服务
+  e.整合工具返回的上下文，生成最终回答
+```
+
+### 19.2.2.搭建MCP服务端
+
+```python
+# pip install langchain-mcp-adapters     
+
+import json
+import os
+import httpx
+from mcp.server.fastmcp import FastMCP
+from loguru import logger
+from dotenv import load_dotenv
+
+# 加载同目录下 .env 文件中的所有环境变量
+load_dotenv()
+
+# 创建FastMCP实例，用于启动天气服务器SSE服务
+mcp = FastMCP("WeatherServerSSE", host="0.0.0.0", port=8000)
+
+@mcp.tool()
+def get_weather(city: str) -> str:
+    """
+        查询即时天气函数
+
+        :param loc: 必要参数，字符串类型，用于表示查询天气的具体城市名称。
+                    注意，中国的城市需要用对应城市的英文名称代替，例如如果需要查询北京市天气，
+                    则 loc 参数需要输入 'Beijing'/'shanghai'。
+        :return: OpenWeather API 查询即时天气的结果。具体 URL 请求地址为：
+                 https://home.openweathermap.org/users/sign_in。
+                 返回结果对象类型为解析之后的 JSON 格式对象，并用字符串形式进行表示，
+                 其中包含了全部重要的天气信息。
+        """
+    # Step 1. 构建请求 URL
+    url = "https://api.openweathermap.org/data/2.5/weather"
+
+    # Step 2. 设置查询参数，包括城市名、API Key、单位和语言
+    params = {
+        "q": city,
+         "appid": os.getenv("OPENWEATHER_API_KEY"),  # 从环境变量中读取 API Key
+        "units": "metric",  # 使用摄氏度
+        "lang": "zh_cn"  # 输出语言为简体中文
+    }
+
+    # Step 3. 发送 GET 请求获取天气数据 @GetMapping
+    response = httpx.get(url, params=params, timeout=30)
+
+    # Step 4. 解析响应内容为 JSON 并序列化为字符串返回
+    data = response.json()
+    logger.info(f"查询 {city} 天气结果：{data}")
+    return json.dumps(data, ensure_ascii=False)
+
+if __name__ == "__main__":
+    logger.info("启动 MCP SSE 天气服务器，监听 http://0.0.0.0:8000/sse")
+    # 运行MCP客户端，使用Server-Sent Events(SSE)作为传输协议
+    mcp.run(transport="sse")
+    #mcp.run(transport="stdio")
+
+```
+
+### 19.2.3.配置 json 注册服务
+
+```json
+{
+  // 存放所有MCP服务的配置根节点
+  "mcpServers": {
+    // 第一个服务：天气查询MCP服务（SSE远程网络模式）
+    "weather": {
+      // SSE服务的访问地址，本地8000端口的sse流式接口
+      "url": "http://127.0.0.1:8000/sse",
+      // 指定传输协议为SSE，基于HTTP长连接远程通信
+      "transport": "sse"
+    },
+    // 第二个服务：网页抓取MCP工具（STDIO本地进程模式）
+    "fetch": {
+      // 启动本地MCP程序的主命令
+      "command": "uvx",
+      // 命令执行参数，启动官方网页抓取MCP服务
+      "args": [
+        "mcp-server-fetch"
+      ],
+      // 指定传输协议为STDIO，进程标准输入输出本地通信
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+> `weather`：远程网络服务，需要先手动运行服务脚本开启 8000 端口，客户端通过 URL 连接；
+>
+> `fetch`：本地工具，客户端会自动执行`uvx mcp-server-fetch`拉起子进程，靠系统管道通信，无需端口
+
+### 19.2.4.搭建MCP客户端
+
+```python
+# pip install uv
+
+import asyncio
+import json
+import os
+from typing import Any, Dict
+from langchain.chat_models import init_chat_model
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from loguru import logger
+from langchain.agents import create_agent
+
+
+# 加载mcp.json配置文件，读取所有MCP服务配置
+def load_servers(file_path: str = "mcp.json") -> Dict[str, Any]:
+    with open(file_path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+        # 只返回配置里的mcpServers节点（weather、fetch两个服务）
+        return data.get("mcpServers", {})
+
+
+# 异步主对话循环函数
+async def run_chat_loop() -> None:
+    # 1. 读取本地MCP服务配置
+    servers_cfg = load_servers()
+    # 2. 创建多服务MCP客户端，自动连接所有SSE+STDIO服务
+    mcp_client = MultiServerMCPClient(servers_cfg)
+    # 3. 异步获取所有MCP暴露的工具（天气查询、网页抓取）
+    tools = await mcp_client.get_tools()
+    # 打印成功加载的工具名称与数量
+    logger.info(f"已加载 {len(tools)} 个 MCP 工具： {[t.name for t in tools]}")
+
+    # 初始化DeepSeek大模型
+    llm = init_chat_model(
+        model="deepseek-v4-pro",
+        api_key=os.getenv("DEEPSEEK_API_KEY"),  # 从环境变量读取密钥
+        base_url="https://api.deepseek.com",
+        # 关闭模型内置思考输出，只返回最终答案
+        extra_body={"thinking": {"type": "disabled"}}
+    )
+
+    # 构建智能Agent：绑定大模型 + 全部MCP工具 + 系统提示词
+    agent = create_agent(
+        model=llm,
+        tools=tools,
+        system_prompt=(
+            "你是AI智能运维助手，必须使用工具回答问题。"
+            "可以调用天气、网页抓取工具，准确回答用户问题。"
+        )
+    )
+
+    logger.info("\n🤖AI智能运维助手已启动，输入 'quit' 退出")
+    # 循环对话交互
+    while True:
+        user_input = input("\n你: ").strip()
+
+        # 输入quit结束会话
+        if user_input.lower() == "quit":
+            break
+
+        try:
+            # 异步调用Agent，自动判断是否需要调用MCP工具
+            result = await agent.ainvoke({"messages": [("user", user_input)]})
+            # 取出最后一条AI回复内容打印
+            print(f"\nAI: {result['messages'][-1].content}")
+        except Exception as exc:
+            # 捕获运行异常并打印日志
+            logger.error(f"\n异常出错: {exc}")
+
+    logger.info("======》会话已结束，Bye!")
+
+
+if __name__ == "__main__":
+    print("---------启动中---------\n")
+    # 提供两个测试提问示例
+    print("测试案例:"
+          "① 北京天气如何：正常返回天气数据\n"
+          "② MCP文档总结：返回完整文档摘要（警告为依赖提示，不影响）")
+
+    # 启动异步对话主函数
+    asyncio.run(run_chat_loop())
 ```
 
