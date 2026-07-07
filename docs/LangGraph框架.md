@@ -1446,6 +1446,728 @@ if __name__ == "__main__":
 ### 6.2.1.普通边
 
 ```python
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
 
+
+# 定义状态
+class GraphState(TypedDict):
+    value: int
+    step: str
+
+
+# 定义节点函数
+def node_a(state: GraphState) -> dict:
+    """节点A"""
+    print("执行节点A")
+    return {"value": state["value"] + 1, "step": "A执行完毕"}
+
+
+def node_b(state: GraphState) -> dict:
+    """节点B"""
+    print("执行节点B")
+    return {"value": state["value"] * 2, "step": "B执行完毕"}
+
+
+def node_c(state: GraphState) -> dict:
+    """节点C"""
+    print("执行节点C")
+    return {"value": state["value"] - 1, "step": "C执行完毕"}
+
+
+def main():
+    # 创建图
+    builder = StateGraph(GraphState)
+
+    # 添加节点
+    builder.add_node("node_a", node_a)
+    builder.add_node("node_b", node_b)
+    builder.add_node("node_c", node_c)
+
+    # 添加普通边
+    builder.add_edge(START, "node_a")  # 从开始到A
+    builder.add_edge("node_a", "node_b")  # 从A到B
+    builder.add_edge("node_b", "node_c")  # 从B到C
+    builder.add_edge("node_c", END)  # 从C到结束
+
+    # 编译图
+    app = builder.compile()
+
+    # 执行图
+    result = app.invoke({"value": 1})
+    print(f"执行结果: {result}\n")
+    # 打印图的边和节点信息
+    print(builder.edges)
+    print(builder.nodes)
+    # 打印图的ascii可视化结构
+    print(app.get_graph().print_ascii())
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 6.2.2.条件边_分支
+
+```python
+from typing import Optional
+from langgraph.constants import START, END
+from langgraph.graph import StateGraph
+from loguru import logger
+from pydantic import BaseModel
+
+
+class MyState(BaseModel):
+    """
+    定义状态模型，用于在图节点之间传递数据
+    Attributes:
+        x (int): 输入的整数
+        result (Optional[str]): 处理结果，可为"even"或"odd"
+    """
+    x: int
+    result: Optional[str] = None
+
+
+def check_x(state: MyState) -> MyState:
+    """
+    检查输入状态的节点函数
+    Args:
+        state (MyState): 包含输入数据的状态对象
+    Returns:
+        MyState: 返回原始状态对象，未做修改
+    """
+    logger.info(f"[check_x] Received state: {state}")
+    return state
+
+
+def is_even(state: MyState) -> bool:
+    """
+    判断状态中x值是否为偶数的条件函数
+    Args:
+        state (MyState): 包含待判断数值的状态对象
+    Returns:
+        bool: 如果x是偶数返回True，否则返回False
+    """
+    return state.x % 2 == 0
+
+
+def handle_even(state: MyState) -> MyState:
+    """
+    处理偶数情况的节点函数
+    Args:
+        state (MyState): 包含偶数输入的状态对象
+    Returns:
+        MyState: 返回更新后的状态对象，result设置为"even"
+    """
+    logger.info("[handle_even] x 是偶数")
+    return MyState(x=state.x, result="even")
+
+
+def handle_odd(state: MyState) -> MyState:
+    """
+    处理奇数情况的节点函数
+    Args:
+        state (MyState): 包含奇数输入的状态对象
+    Returns:
+        MyState: 返回更新后的状态对象，result设置为"odd"
+    """
+    logger.info("[handle_odd] x 是奇数")
+    return MyState(x=state.x, result="odd")
+
+
+builder = StateGraph(MyState)
+builder.add_node("check_x", check_x)
+builder.add_node("handle_even", handle_even)
+builder.add_node("handle_odd", handle_odd)
+
+
+def is_even(state: MyState) -> bool:
+    """
+    判断状态中x值是否为偶数的条件函数
+    Args:
+        state (MyState): 包含待判断数值的状态对象
+    Returns:
+        bool: 如果x是偶数返回True，否则返回False
+    """
+    return state.x % 2 == 0
+
+
+# 添加条件边，根据is_even函数的返回值决定流向哪个节点
+builder.add_conditional_edges("check_x", is_even, {
+    True: "handle_even",
+    False: "handle_odd"
+})
+
+# 添加起始边，从START节点流向check_x节点
+builder.add_edge(START, "check_x")
+
+# 添加结束边，从处理节点流向END节点
+builder.add_edge("handle_even", END)
+builder.add_edge("handle_odd", END)
+
+# 编译图结构
+graph = builder.compile()
+# 打印图的边和节点信息
+print(builder.edges)
+print(builder.nodes)
+# 打印图的可视化结构
+print(graph.get_graph().print_ascii())
+
+
+# 测试用例：输入偶数4
+logger.info("输入 x=4（偶数）")
+graph.invoke(MyState(x=4))
+
+# 测试用例：输入奇数3
+logger.info("输入 x=3（奇数）")
+graph.invoke(MyState(x=3))
+
+```
+
+### 6.2.3.条件边_循环
+
+```python
+from typing import Literal
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+from langgraph.errors import GraphRecursionError
+
+class LoopState(TypedDict):
+    count: int
+    result: str
+    max_count: int
+
+def node_a(state: LoopState) -> dict:
+    """节点a：处理逻辑并更新计数"""
+    print(f"执行节点a，当前计数: {state['count']}")
+    return {
+        'count': state['count'] + 1,
+        'result': f"已处理{state['count']}次"
+    }
+
+def node_b(state: LoopState) -> dict:
+    """节点b：辅助处理"""
+    print(f"执行节点b，当前计数: {state['count']}")
+    return {
+        'result': f"已处理{state['count']}次 - 辅助处理"
+    }
+
+def route(state: LoopState) -> Literal["b", END]:
+    """条件路由函数：决定是继续循环还是终止"""
+    # 终止条件：当计数达到最大值时终止
+    if state['count'] >= state['max_count']:
+        print(f"满足终止条件，计数 {state['count']} >= {state['max_count']}，返回END")
+        return END
+    else:
+        print(f"未满足终止条件，计数 {state['count']} < {state['max_count']}，返回b")
+        return "b"
+
+# 创建图
+builder = StateGraph(LoopState)
+
+# 添加节点
+builder.add_node("a", node_a)
+builder.add_node("b", node_b)
+
+# 添加边
+builder.add_edge(START, "a")
+builder.add_conditional_edges("a", route)
+builder.add_edge("b", "a")
+
+# 编译图
+graph = builder.compile()
+
+# 执行图
+try:
+    result = graph.invoke(input={
+        'count': 0,
+        'result': '',
+        'max_count': 300
+    }, config={
+        'recursion_limit': 6  # 设置递归限制
+    })
+    print("=== 执行结果 ===")
+    print(result)
+except GraphRecursionError as e:
+    print(f"GraphRecursionError递归错误: {e}")
+
+```
+
+### 6.2.4.固定入口点
+
+```python
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+
+
+# 定义状态
+class AtguiguState(TypedDict):
+    value: int
+    step: str
+
+
+# 定义节点函数
+def node_a(state: AtguiguState) -> dict:
+    """节点A"""
+    print("执行节点A")
+    print("state[value]:" + str(state["value"]))
+    print("state[step]:" + str(state["step"]))
+    return {"value": state["value"] + 1, "step": "A执行完毕"}
+
+
+def node_b(state: AtguiguState) -> dict:
+    """节点B"""
+    print("执行节点B")
+    return {"value": state["value"] * 2, "step": "B执行完毕"}
+
+
+def main():
+    # 创建图
+    builder = StateGraph(AtguiguState)
+
+    # 添加节点
+    builder.add_node("node_a", node_a)
+    builder.add_node("node_b", node_b)
+
+    """
+    set_entry_point(node_id) 和 set_finish_point(node_id) 是 LangGraph 为「图对象」提供的配置方法，
+    核心作用是将你自定义的业务节点，和内置的 START/END 特殊节点做 “自动绑定”，简化图的入口 / 出口边的定义，
+    本质是语法糖（底层还是帮你执行了 add_edge(START, 入口节点) / add_edge(出口节点, END)）
+
+    set_entry_point(node_id)
+        图的实际执行入口是 node_id 这个自定义节点，底层会自动创建一条边 add_edge(START, node_id)，
+        无需你手动写这条边
+    set_finish_point(node_id)
+        当流程走到 node_id 这个自定义节点时视为流程结束，底层会自动创建一条边 add_edge(node_id, END)，
+        无需你手动写这条边
+    """
+    builder.set_entry_point("node_a")
+    builder.add_edge("node_a", "node_b")
+    builder.set_finish_point("node_b")
+
+    # 编译图
+    graph = builder.compile()
+    # 执行图
+    result = graph.invoke({"value": 0, "step": "hello"})
+    print(f"执行结果: {result}\n")
+
+    print()
+    # 打印图的ascii可视化结构
+    print(graph.get_graph().print_ascii())
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 6.2.5.条件入口点
+
+```python
+from typing import TypedDict
+from langgraph.graph import StateGraph, START, END
+
+
+# 定义简单的状态
+class SimpleState(TypedDict):
+    user_input: str
+    response: str
+    node_visited: str
+
+
+# 由函数 - 决定从START去哪
+def route_input(state: SimpleState) -> str:
+    """根据用户输入决定去哪个节点"""
+    text = state["user_input"].lower()
+
+    if "hello" in text or "hi" in text:
+        return "greeting"  # 返回路由键
+    elif "bye" in text or "exit" in text:
+        return "farewell"  # 返回路由键
+    else:
+        return "question"  # 返回路由键
+
+
+# 3. 各个处理节点
+def handle_greeting(state: SimpleState) -> SimpleState:
+    """处理问候"""
+    state["response"] = "你好！很高兴见到你！"
+    state["node_visited"] = "greeting_node"
+    return state
+
+
+def handle_farewell(state: SimpleState) -> SimpleState:
+    """处理告别"""
+    state["response"] = "再见！祝你有个美好的一天！"
+    state["node_visited"] = "farewell_node"
+    return state
+
+
+def handle_question(state: SimpleState) -> SimpleState:
+    """处理问题"""
+    state["response"] = "我听到了你的问题，需要更多帮助吗？"
+    state["node_visited"] = "question_node"
+    return state
+
+
+# 4. 创建图
+def create_simple_graph():
+    """创建一个简单的图"""
+    workflow = StateGraph(SimpleState)
+
+    # 添加节点
+    workflow.add_node("greeting_node", handle_greeting)
+    workflow.add_node("farewell_node", handle_farewell)
+    workflow.add_node("question_node", handle_question)
+
+    '''条件入口点
+     add_conditional_edges(START, route_function, mapping)
+         START：从图的起点开始
+         route_function：决定去哪里的函数，返回一个字符串（路由键）
+         mapping（可选）：路由键到节点名的映射
+
+    START → route_input()函数 → 返回"greeting" → 映射到"greeting_node" → 执行handle_greeting → END
+    '''
+    workflow.add_conditional_edges(
+        START,  # 起点
+        route_input,  # 路由函数
+        # 路由映射（可选）：路由函数的返回值 -> 节点名
+        {
+            "greeting": "greeting_node",  # route_input返回"greeting"时，去greeting_node
+            "farewell": "farewell_node",  # route_input返回"farewell"时，去farewell_node
+            "question": "question_node"  # route_input返回"question"时，去question_node
+        }
+    )
+
+    # 所有节点都到END
+    workflow.add_edge("greeting_node", END)
+    workflow.add_edge("farewell_node", END)
+    workflow.add_edge("question_node", END)
+
+    return workflow.compile()
+
+
+# 使用示例
+def run_example():
+    # 创建图
+    graph = create_simple_graph()
+    # 测试不同的输入
+    test_inputs = [
+        "Hello everyone!",
+        "Goodbye now",
+        "What time is it?"
+    ]
+
+    for user_input in test_inputs:
+        print(f"\n输入: {user_input}")
+        print("-" * 30)
+
+        # 创建初始状态
+        initial_state = SimpleState(
+            user_input=user_input,
+            response="",
+            node_visited=""
+        )
+
+        # 执行图
+        result = graph.invoke(initial_state)
+
+        print(f"路由决策: {route_input(initial_state)}")
+        print(f"访问的节点: {result['node_visited']}")
+        print(f"响应: {result['response']}")
+
+    print()
+    # 打印图的ascii可视化结构
+    print(graph.get_graph().print_ascii())
+
+# 运行示例
+if __name__ == "__main__":
+    run_example()
+```
+
+# 7.Persistence状态持久化
+
+## 7.1.基础理论
+
+```python
+1.状态持久化指的是在程序运行时将瞬间的状态保存下来，以便后续需要的时候能够重新恢复执行，用于解决因为程序退出、重启等事件而丢失任务
+
+2.在 LangGraph 如果使用了持久化，工作流执行的每个步骤结束后，系统会自动将当前整个图的状态（包括所有变量、历史消息、下一步要执行的节点等信息）完整地保存下来，这份存档就是一个检查点（Checkpoint）
+
+3.LangGraph支持存储在内存、Redis、DB等存储介质中
+
+4.检查点是由一个 StateSnapshot 对象表示，它有几个关键属性
+  a.config：与此检查点关联的配置，如检查点 id、线程 id 等
+  b.metadata：与此检查点关联的元数据
+  c.values：在此时时间点的状态值 
+  d.next：一个元组，包含图中接下来要执行的节点名称
+  e.tasks：
+    一个 PregelTask 对象的元组，包含有关接下来要执行的任务的信息
+    如果该步骤之前执行过，将包含错误信息
+    如果图在节点内部被动态中断，任务将包含与中断相关的其他数据
+
+```
+
+## 7.2.Checkpointer短期记忆
+
+### 7.2.1.理论介绍
+
+```python
+1.短期记忆（通过 Checkpointer 实现）：负责捕捉单次对话中逐轮变化的上下文和状态。这类似于人类的工作记忆，让我们能够流畅地进行一次对话，记住对方刚刚说了什么
+
+2.存储载体 Checkpointer 负责持久化会话状态，提供多种存储实现：
+  内存：MemorySaver（本地测试）
+  数据库：RedisSaver、PostgresSaver（线上持久保存）
+
+3.核心功能
+  把每一轮对话消息、工具返回结果统一转为图 State 进行存储
+  用 thread_id 区分不同用户会话
+  再次调用时传入相同 thread_id，自动读取历史状态，实现对话接续
+    
+4.运行原理
+  每次调用 graph.invoke() / graph.stream()，都会生成一份当前运行状态 State
+  不配置 Checkpointer：本次调用结束，状态直接销毁，没有记忆
+  配置 Checkpointer：每一步的 State 会自动存入存储，下次同会话可恢复全部历史上下文
+```
+
+### 7.2.2.代码案例
+
+```python
+from typing import Annotated
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import InMemorySaver
+import operator
+
+
+# 定义状态
+class PersistenceDemoState(TypedDict):
+    # operator.add：将元素追加到现有元素中，支持列表、字符串、数值类型的追加，按归约规则合并新旧值
+    messages: Annotated[list, operator.add]
+    step_count: Annotated[int, operator.add]
+
+
+# 节点函数
+def step_one(state: PersistenceDemoState) -> dict:
+    print("执行步骤 1")
+    return {
+        "messages": ["执行了步骤 1"],
+        "step_count": 1
+    }
+
+
+def step_two(state: PersistenceDemoState) -> dict:
+    print("执行步骤 2")
+    return {
+        "messages": ["执行了步骤 2"],
+        "step_count": 1
+    }
+
+
+def step_three(state: PersistenceDemoState) -> dict:
+    print("执行步骤 3")
+    return {
+        "messages": ["执行了步骤 3"],
+        "step_count": 1
+    }
+
+
+# 构建图
+def create_graph():
+    builder = StateGraph(PersistenceDemoState)
+
+    builder.add_node("step_one", step_one)
+    builder.add_node("step_two", step_two)
+    builder.add_node("step_three", step_three)
+
+    builder.add_edge(START, "step_one")
+    builder.add_edge("step_one", "step_two")
+    builder.add_edge("step_two", "step_three")
+    builder.add_edge("step_three", END)
+
+    return builder
+
+
+def main():
+    # 编译图并使用内存存储
+    graph = create_graph()
+    # 将检查点保存在内存中，程序退出后丢失。生产环境通常替换为 PostgresSaver / SqliteSaver 等持久化方案
+    app = graph.compile(checkpointer=InMemorySaver())
+
+    # 配置线程ID用于存储状态
+    config = {"configurable": {"thread_id": "user_13811112222"}}
+
+    print("1. 首次执行工作流:")
+    result = app.invoke({
+        "messages": ["开始执行"],
+        "step_count": 0
+    }, config)
+
+    print(f"执行结果result: {result}\n")
+
+    print("2. 检查存储的状态，获取最新状态:")
+    saved_state = app.get_state(config)
+    print(f"保存的状态: {saved_state.values}")
+    print(f"下一个节点: {saved_state.next}\n")
+
+    # 完整历史回溯，获取指定线程的完整执行历史（正序：从最早到最晚,第一步在栈底）
+    history = app.get_state_history(config)
+    # 遍历历史中的每一个检查点快照，可用于：调试、审计、时间旅行回放
+    for checkpoint in history:
+        print("=" * 50)
+        # 该时刻的完整State状态（最核心）
+        print(f"当前状态: {checkpoint.values}")
+
+    print("3. 恢复执行工作流:")
+    # 传入了 None 作为输入，对于已执行完毕的工作流：
+    # 直接返回最终状态，不会重新执行，因为检查点系统知道该线程已经到达 END
+    # 如果工作流 尚未完成（比如中间中断），传入 None 会从断点处 继续执行。这就是 断点续跑 机制。
+    result2 = app.invoke(None, config)
+    print(f"恢复执行结果: {result2}\n")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+> ```python
+> === 执行流程 ===
+> 1. graph.compile(checkpointer=InMemorySaver())
+>    └─ 注册检查点保存器，准备跟踪状态
+> 
+> 2. app.invoke({"messages": ["开始执行"], "step_count": 0}, config)
+>    │
+>    ├─ START → step_one
+>    │   ├─ 输入: {"messages": ["开始执行"], "step_count": 0}
+>    │   ├─ 执行: print("执行步骤 1")
+>    │   ├─ 返回: {"messages": ["执行了步骤 1"], "step_count": 1}
+>    │   ├─ 归约后 State: messages=["开始执行","步骤1"], step_count=1
+>    │   └─ ★ 自动保存检查点 1
+>    │
+>    ├─ step_one → step_two
+>    │   ├─ 输入: messages=["开始执行","步骤1"], step_count=1
+>    │   ├─ 执行: print("执行步骤 2")
+>    │   ├─ 返回: {"messages": ["执行了步骤 2"], "step_count": 1}
+>    │   ├─ 归约后 State: messages=["开始执行","步骤1","步骤2"], step_count=2
+>    │   └─ ★ 自动保存检查点 2
+>    │
+>    ├─ step_two → step_three
+>    │   ├─ 输入: messages=["开始执行","步骤1","步骤2"], step_count=2
+>    │   ├─ 执行: print("执行步骤 3")
+>    │   ├─ 返回: {"messages": ["执行了步骤 3"], "step_count": 1}
+>    │   ├─ 归约后 State: messages=["开始执行","步骤1","步骤2","步骤3"], step_count=3
+>    │   └─ ★ 自动保存检查点 3
+>    │
+>    └─ step_three → END → 返回最终 State
+> 
+> 3. app.get_state(config)
+>    └─ values: {messages: ["开始执行", "步骤1", "步骤2", "步骤3"], step_count: 3}
+>    └─ next: ()  ← 空，表示执行完毕
+> 
+> 4. app.get_state_history(config)
+>    └─ 遍历 3 个检查点，每个展示当时的完整 State
+> 
+> 5. app.invoke(None, config)
+>    └─ 工作流已完成 → 直接返回最终 State，不再执行
+> ```
+
+## 7.3.长期记忆
+
+### 7.3.1.理论介绍
+
+```python
+1.长期记忆（通过 Store 实现）：负责存储跨越多次对话的持久化知识、用户偏好和核心事实。这好比人类的长期记忆，储存着我们的身份、知识和经历
+
+2.LangGraph 三种检查点存储对比表：
+```
+
+| 类名          | 中文名称                | 核心特点                                 | 适用场景                   | 注意事项                           |
+| ------------- | ----------------------- | ---------------------------------------- | -------------------------- | ---------------------------------- |
+| MemorySaver   | 内存存储检查点          | 内存读写，速度快，无外部依赖             | 开发、测试、原型验证       | 进程重启后数据全部丢失             |
+| SqliteSaver   | SQLite 文件检查点       | 磁盘持久化，轻量，无需额外服务           | 中小规模单机生产应用       | 高并发场景性能较差                 |
+| PostgresSaver | PostgreSQL 数据库检查点 | 高性能、支持高并发，查询能力强、可靠性高 | 大规模、高可靠线上生产环境 | 需要单独部署 PostgreSQL 数据库服务 |
+
+### 7.3.2.代码案例
+
+#### 7.3.2.1.SQLite 文件检查点
+
+```python
+# pip install langgraph-checkpoint-sqlite
+
+import sqlite3
+import operator
+from typing import TypedDict, Annotated
+from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.graph import StateGraph,START,END
+
+class MyState(TypedDict):
+    messages:Annotated[list,operator.add]
+
+def node_1(state:MyState):
+    return {"messages":["abc","def"]}
+
+def main():
+	# 数据存储到D:\\44目录下面，需要目录存在
+    # check_same_thread=False 允许多线程共享此连接,因为LangGraph 在执行过程中可能会在 不同线程
+    # 中访问检查点（例如异步执行、回调、或在事件循环中调度）。如果不设为 False，框架内部切换线程时就会崩溃。
+    conn = sqlite3.connect(database="D:\\44\\sqlite_data.db",check_same_thread=False)
+    sqliteDB = SqliteSaver(conn=conn)
+
+    builder = StateGraph(MyState)
+    builder.add_node("node_1",node_1)
+
+    builder.add_edge(START, "node_1")
+    builder.add_edge("node_1", END)
+
+    graph = builder.compile(checkpointer=sqliteDB)
+    # 同一个用户id下，每次执行都会插入一次新数据，记得修改用户编号或者直接删除D:\\44\\sqlite_data.db
+    config = {"configurable": {"thread_id": "user-111"}}
+
+    initial_state = graph.get_state(config)
+    print(f"Initial state: {initial_state}")
+
+    # 执行图
+    result = graph.invoke({"messages":[]}, config)
+    print(f"Result: {result}")
+
+    # 查看执行后的状态
+    final_state = graph.get_state(config)
+    print()
+    print(f"Final state: {final_state}")
+
+    conn.close()
+
+if __name__ == '__main__':
+    main()
+
+```
+
+#### 7.3.2.2.Agent 实现记忆存储
+
+```python
+import os
+from langchain.chat_models import init_chat_model
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.agents import create_agent
+
+llm = init_chat_model(
+    model="qwen-plus",
+    model_provider="openai",
+    api_key=os.getenv("DASHSCOPE_API_KEY"),
+    temperature=0.0,
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+)
+
+# 定义短期记忆使用内存（生产可以换 RedisSaver/PostgresSaver）
+checkpointer = InMemorySaver()
+agent = create_agent(model=llm,checkpointer=checkpointer)
+# 多轮对话配置，同一 thread_id 即同一会话
+config = {"configurable": {"thread_id": "user-001"}}
+
+msg1 = agent.invoke({"messages": [("user", "你好，我叫张三，喜欢足球，60字内简洁回复")]}, config)
+msg1["messages"][-1].pretty_print()
+
+# 6. 第二轮（继续同一 thread）
+msg2 = agent.invoke({"messages": [("user", "我叫什么？我喜欢做什么？")]}, config)
+msg2["messages"][-1].pretty_print()
 ```
 
