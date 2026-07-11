@@ -7,7 +7,7 @@
 
 4.截止2023年10月，最新的公开版本为：`3.3.4`
 
-<img src="D:\project\lo-blog\image\1732006157812-8cd2a64f-457c-424f-b7ec-6063591b3298.png" width="1851" title="" crop="0,0,1,1" id="u034d2b65" class="ne-image">
+<img src="../image/1732006157812-8cd2a64f-457c-424f-b7ec-6063591b3298.png" width="1851" title="" crop="0,0,1,1" id="u034d2b65" class="ne-image">
 
 ## 1.1.性能的提升
 1.打包大小减少`41%`
@@ -82,9 +82,9 @@ npm run serve
 + 真正的按需编译，不再等待整个应用编译完成
 
 3.`webpack`构建 与 `vite` 构建对比图如下：  
-<img src="D:\project\lo-blog\image\1732006226949-31b7da87-531b-4518-96ed-5f612ce0ed04.png" width="1798" title="" crop="0,0,1,1" id="udd3b6567" class="ne-image">
+<img src="../image/1732006226949-31b7da87-531b-4518-96ed-5f612ce0ed04.png" width="1798" title="" crop="0,0,1,1" id="udd3b6567" class="ne-image">
 
-<img src="D:\project\lo-blog\image\1732006242792-566fb495-a571-4d6e-86d1-8f8b551575b7.png" width="1789" title="" crop="0,0,1,1" id="u6645577a" class="ne-image">
+<img src="../image/1732006242792-566fb495-a571-4d6e-86d1-8f8b551575b7.png" width="1789" title="" crop="0,0,1,1" id="u6645577a" class="ne-image">
 
 4.具体操作如下
 
@@ -97,13 +97,13 @@ npm run serve
 npm create vue@latest
 ```
 
-<img src="D:\project\lo-blog\image\1732006259426-482aba99-29d9-458e-9cfd-55c02b054557.png" width="1247" title="" crop="0,0,1,1" id="ue77ef276" class="ne-image">
+<img src="../image/1732006259426-482aba99-29d9-458e-9cfd-55c02b054557.png" width="1247" title="" crop="0,0,1,1" id="ue77ef276" class="ne-image">
 
 （2）安装官方推荐的`vscode`插件：
 
-<img src="D:\project\lo-blog\image\1732006273228-0ed87124-722a-460b-a05c-db117a3da00a.png" width="455" title="" crop="0,0,1,1" id="u29ec46ac" class="ne-image">
+<img src="../image/1732006273228-0ed87124-722a-460b-a05c-db117a3da00a.png" width="455" title="" crop="0,0,1,1" id="u29ec46ac" class="ne-image">
 
-<img src="https://cdn.nlark.com/yuque/0/2024/png/34290097/1732006291700-ba2ca807-64d2-47da-b6a2-debee7829f28.png" width="455" title="" crop="0,0,1,1" id="uc08dd55c" class="ne-image">
+<img src="../image/1732006291700-ba2ca807-64d2-47da-b6a2-debee7829f28.png" width="455" title="" crop="0,0,1,1" id="uc08dd55c" class="ne-image">
 
 （3）下载依赖
 
@@ -182,12 +182,12 @@ npm run dev
 ### （1）Options API 的弊端
 `Options` 类型的 `API`，数据、方法、计算属性等，是分散在：`data`、`methods`、`computed`中的，若想新增或者修改一个需求，就需要分别修改：`data`、`methods`、`computed`，不便于维护和复用
 
-<img src="D:/搜狗高速下载/贪吃蛇/blog/Vue3/images/1696662197101-55d2b251-f6e5-47f4-b3f1-d8531bbf9279.gif" title="" crop="0,0,1,1" id="quTwa" class="ne-image"><img src="D:/搜狗高速下载/贪吃蛇/blog/Vue3/images/1696662200734-1bad8249-d7a2-423e-a3c3-ab4c110628be.gif" title="" crop="0,0,1,1" id="iq785" class="ne-image"><img src="D:\project\lo-blog\image\1732006327558-5749add6-82e6-442c-b8a7-9f3a2249bfe8.gif" width="162" title="" crop="0,0,1,1" id="u4a88249a" class="ne-image"><img src="https://cdn.nlark.com/yuque/0/2024/gif/34290097/1732006355545-b764f37a-5ffd-4d13-bcec-a1cc39dd8bd7.gif" width="205" title="" crop="0,0,1,1" id="u2ca6377b" class="ne-image">
+<img src="../image/1732006327558-5749add6-82e6-442c-b8a7-9f3a2249bfe8.gif" width="162" title="" crop="0,0,1,1" id="u4a88249a" class="ne-image"><img src="../image/1732006355545-b764f37a-5ffd-4d13-bcec-a1cc39dd8bd7.gif" width="205" title="" crop="0,0,1,1" id="u2ca6377b" class="ne-image">
 
 ### （2）Composition API 的优势
 可以用函数的方式，更加优雅的组织代码，让相关功能的代码更加有序的组织在一起
 
-<img src="D:/搜狗高速下载/贪吃蛇/blog/Vue3/images/1696662249851-db6403a1-acb5-481a-88e0-e1e34d2ef53a.gif" title="" crop="0,0,1,1" id="uy2K9" class="ne-image"><img src="D:/搜狗高速下载/贪吃蛇/blog/Vue3/images/1696662256560-7239b9f9-a770-43c1-9386-6cc12ef1e9c0.gif" title="" crop="0,0,1,1" id="eXMlM" class="ne-image"><img src="D:\project\lo-blog\image\1732006374587-e0722af6-5dbe-4afe-b957-ac6157d6fbb3.gif" width="296" title="" crop="0,0,1,1" id="u1342c02f" class="ne-image"><img src="D:\project\lo-blog\image\1732006397956-fe8f132a-a12a-4669-9fe7-cdd8ef59b494.gif" width="308" title="" crop="0,0,1,1" id="uea1613c4" class="ne-image">
+<img src="../image/1732006374587-e0722af6-5dbe-4afe-b957-ac6157d6fbb3.gif" width="296" title="" crop="0,0,1,1" id="u1342c02f" class="ne-image"><img src="../image/1732006397956-fe8f132a-a12a-4669-9fe7-cdd8ef59b494.gif" width="308" title="" crop="0,0,1,1" id="uea1613c4" class="ne-image">
 
 ## 3.2.setup
 ### （1）setup 概述
@@ -568,7 +568,7 @@ name:'Person',
 + `ref` 创建的变量必须使用 `.value`（可以使用 `volar` 插件自动添加 `.value`）
 + `reactive` 重新分配一个新对象，会失去响应式（可以使用 `Object.assign` 去整体替换）
 
-<img src="D:\搜狗高速下载\贪吃蛇\blog\Vue3\images\Snipaste_2024-11-15_20-32-00.png" title="null" crop="0,0,1,1" id="E4jeR" class="ne-image"><img src="D:\project\lo-blog\image\1732006444342-1b93cc91-340a-4187-b91e-ee4f17402ff2.png" width="299" title="" crop="0,0,1,1" id="ub9098497" class="ne-image">
+<img src="D:\搜狗高速下载\贪吃蛇\blog\Vue3\images\Snipaste_2024-11-15_20-32-00.png" title="null" crop="0,0,1,1" id="E4jeR" class="ne-image"><img src="../image/1732006444342-1b93cc91-340a-4187-b91e-ee4f17402ff2.png" width="299" title="" crop="0,0,1,1" id="ub9098497" class="ne-image">
 
 3.使用原则：
 
@@ -638,7 +638,7 @@ name:'Person',
 
 3.代码示例：
 
-<img src="D:\project\lo-blog\image\1732006465149-c75aecd4-6e66-4eea-9719-49f455c74daa.gif" width="348" title="" crop="0,0,1,1" id="u05bc574d" class="ne-image">
+<img src="../image/1732006465149-c75aecd4-6e66-4eea-9719-49f455c74daa.gif" width="348" title="" crop="0,0,1,1" id="u05bc574d" class="ne-image">
 
 ```vue
 <template>
@@ -1395,7 +1395,7 @@ import {reactive,onMounted} from 'vue'
 
 # 4.路由
 ## 4.1.对路由的理解
-<img src="D:\project\lo-blog\image\1732006508631-695c686a-94f0-4fc5-a675-c422d9ffbc53.png" width="3305" title="" crop="0,0,1,1" id="u5384c9b4" class="ne-image">
+<img src="../image/1732006508631-695c686a-94f0-4fc5-a675-c422d9ffbc53.png" width="3305" title="" crop="0,0,1,1" id="u5384c9b4" class="ne-image">
 
 ## 4.2.路由的基本使用
 1.安装 vue-router，命令：`npm i vue-router`
@@ -1840,7 +1840,7 @@ function showNewsDetail2(news){
 4.何时使用 pinia? ——多个组件需要共享数据时
 
 ## 5.2.准备一个效果
-<img src="D:\project\lo-blog\image\1732006538961-c0f38345-0f2e-4313-ae5f-837c725d9bcd.gif" width="406" title="" crop="0,0,1,1" id="ub6587b3c" class="ne-image">
+<img src="../image/1732006538961-c0f38345-0f2e-4313-ae5f-837c725d9bcd.gif" width="406" title="" crop="0,0,1,1" id="ub6587b3c" class="ne-image">
 
 ## 5.2.搭建 pinia 环境
 1.下载 pinia
@@ -1866,7 +1866,7 @@ app.mount('#app')
 
 3.此时开发者工具中已经有了`pinia`选项
 
-<img src="D:\project\lo-blog\image\1732006555588-0643da5f-2959-4d6f-a340-67a1ea08148e.png" width="2743" title="" crop="0,0,1,1" id="ufaf321c4" class="ne-image">
+<img src="../image/1732006555588-0643da5f-2959-4d6f-a340-67a1ea08148e.png" width="2743" title="" crop="0,0,1,1" id="ufaf321c4" class="ne-image">
 
 ## 5.3.存储+读取数据
 1.`Store` 是一个保存：状态、业务逻辑的实体，每个组件都可以读取、写入它
@@ -2057,7 +2057,7 @@ import {defineStore} from 'pinia'
 
 2.常见搭配形式：
 
-<img src="D:\project\lo-blog\image\1732006581800-45487623-f338-4d98-b8c3-f46ca926ddc0.png" width="1036" title="" crop="0,0,1,1" id="ucca26155" class="ne-image">
+<img src="../image/1732006581800-45487623-f338-4d98-b8c3-f46ca926ddc0.png" width="1036" title="" crop="0,0,1,1" id="ucca26155" class="ne-image">
 
 ## 6.1.props
 1.概述：`props` 是使用频率最高的一种通信方式，常用于 父 ↔↔ 子
@@ -2705,7 +2705,7 @@ function sendToy(){
 `pinia` 也可以实现任意组件间通信
 
 ## 6.9.slot
-<img src="D:\project\lo-blog\image\1732006621153-30725524-c243-4c24-bf5c-3dc83c589547.png" width="1248" title="" crop="0,0,1,1" id="ua2b24f66" class="ne-image">
+<img src="../image/1732006621153-30725524-c243-4c24-bf5c-3dc83c589547.png" width="1248" title="" crop="0,0,1,1" id="ua2b24f66" class="ne-image">
 
 ### （1）默认插槽
 App.vue：父组件
