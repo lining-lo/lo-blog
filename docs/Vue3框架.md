@@ -568,7 +568,7 @@ name:'Person',
 + `ref` 创建的变量必须使用 `.value`（可以使用 `volar` 插件自动添加 `.value`）
 + `reactive` 重新分配一个新对象，会失去响应式（可以使用 `Object.assign` 去整体替换）
 
-<img src="D:\搜狗高速下载\贪吃蛇\blog\Vue3\images\Snipaste_2024-11-15_20-32-00.png" title="null" crop="0,0,1,1" id="E4jeR" class="ne-image"><img src="../image/1732006444342-1b93cc91-340a-4187-b91e-ee4f17402ff2.png" width="299" title="" crop="0,0,1,1" id="ub9098497" class="ne-image">
+<img src="../image/1732006444342-1b93cc91-340a-4187-b91e-ee4f17402ff2.png" width="299" title="" crop="0,0,1,1" id="ub9098497" class="ne-image">
 
 3.使用原则：
 
