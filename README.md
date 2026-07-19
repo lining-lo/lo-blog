@@ -1,7 +1,7 @@
 # 📚 个人博客文档列表
 
-> ⏱ 自动生成于：2026/7/14 20:22:54
-> 📄 文档总数：**21** 个
+> ⏱ 自动生成于：2026/7/19 15:10:10
+> 📄 文档总数：**22** 个
 
 1. [创建一个脚手架.md](docs/创建一个脚手架.md)
 2. [大模型相关知识.md](docs/大模型相关知识.md)
@@ -20,7 +20,8 @@
 15. [Nodejs语法.md](docs/Nodejs语法.md)
 16. [Promise语法.md](docs/Promise语法.md)
 17. [Python语法.md](docs/Python语法.md)
-18. [TypeScript语法.md](docs/TypeScript语法.md)
-19. [Vue2框架.md](docs/Vue2框架.md)
-20. [Vue3框架.md](docs/Vue3框架.md)
-21. [Webpack打包工具.md](docs/Webpack打包工具.md)
+18. [RAG中文档切割的必要性.md](docs/RAG中文档切割的必要性.md)
+19. [TypeScript语法.md](docs/TypeScript语法.md)
+20. [Vue2框架.md](docs/Vue2框架.md)
+21. [Vue3框架.md](docs/Vue3框架.md)
+22. [Webpack打包工具.md](docs/Webpack打包工具.md)
